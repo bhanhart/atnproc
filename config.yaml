@@ -1,0 +1,7 @@
+capture_directories:
+  - /mnt/logs/archiver/atnr01-tds-fep/captures
+  - /mnt/logs/archiver/atnr02-tds-fep/captures
+work_directories:
+  input_directory: /var/tmp/alcp/input
+  active_directory: /var/tmp/alcp/active
+  output_directory: /var/tmp/alcp/output

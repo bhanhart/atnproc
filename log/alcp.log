@@ -1,0 +1,13 @@
+2025-08-16 16:10:51,240 [CRITICAL] __main__: FATAL: Configuration file does not exist: config.yaml
+2025-08-16 16:17:15,811 [INFO] InterruptibleSleeper: Sleep interrupted (signal=SIGINT)
+2025-08-16 16:17:15,821 [INFO] Application: Shutdown request (signal=SIGINT)
+2025-08-16 16:17:15,821 [INFO] __main__: Normal exit with exit code: 0
+2025-08-16 16:19:00,133 [INFO] Application: Application initialized
+2025-08-16 16:19:00,133 [INFO] Application: Application running
+2025-08-16 16:19:00,133 [INFO] Application: Application sleeping...
+2025-08-16 16:19:05,139 [INFO] Application: Application sleeping...
+2025-08-16 16:19:10,144 [INFO] Application: Application sleeping...
+2025-08-16 16:19:10,618 [INFO] InterruptibleSleeper: Sleep interrupted (signal=SIGINT)
+2025-08-16 16:19:10,618 [INFO] Application: Shutdown request (signal=SIGINT)
+2025-08-16 16:19:10,618 [INFO] Application: Shutdown requested, exiting application
+2025-08-16 16:19:10,618 [INFO] __main__: Normal exit with exit code: 0
