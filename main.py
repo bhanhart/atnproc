@@ -32,9 +32,14 @@ import sys
 from pathlib import Path
 
 from application import Application
-from configure_logging import configure_logging
+from atn_capture_processor import AtnCaptureProcessor
 
 from config import Configuration
+
+import logging.config
+
+import yaml
+
 
 logger: logging.Logger | None = None
 
@@ -54,7 +59,7 @@ def fatal(message: str):
     sys.exit(1)
 
 
-def get_config_file() -> Path:
+def get_config_file_path() -> Path:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-c", "--config-file", type=str, required=True, help="Configuration file"
@@ -66,9 +71,17 @@ def get_config_file() -> Path:
     return config_file
 
 
+def configure_logging():
+    log_dir = Path("./log")
+    log_dir.mkdir(exist_ok=True)
+    with open("logging.yaml", "r") as f:
+        logging.config.dictConfig(yaml.safe_load(f))
+
+
 def main() -> int:
-    config = Configuration(get_config_file())
-    application = Application(config)
+    config = Configuration(get_config_file_path())
+    processor = AtnCaptureProcessor(config)
+    application = Application(processor)
     application.run()
     return 0
 

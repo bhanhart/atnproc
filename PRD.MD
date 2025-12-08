@@ -64,13 +64,13 @@ To handle growing files and ensure no data is missed, the application will use a
 
 1.  **Identify Candidates**: In each cycle, identify the two most recent capture files from the source directories (referred to as `latest` and `previous`).
 2.  **Copy to Work Area**: To prevent issues with `rsync` changing a file during processing, copy the candidate files to a local working directory for processing.
-3.  **State Management**: Maintain the concept of an "active" file, which is the file currently being processed. This file's state is tracked by its presence in a dedicated "active" directory.
-4.  **Initial Run**: If no "active" file exists:
+3.  **State Management**: Maintain the concept of a "current" file, which is the file currently being processed. This file's state is tracked by its presence in a dedicated "current" directory.
+4.  **Initial Run**: If no "current" file exists:
     -   If a `previous` file is identified, it is processed first.
-    -   The `latest` file is then processed and staged as the new "active" file.
+    -   The `latest` file is then processed and staged as the new "current" file.
 5.  **Steady State Operation**: On subsequent runs:
-    -   **New File Detected**: If the `latest` file from the source is newer than the "active" file, the "active" file (which now corresponds to the `previous` file) is re-processed one last time to ensure it is complete. Afterwards, the new `latest` file is processed and staged as the new "active" file.
-    -   **Existing File Updated**: If the `latest` file from the source is the same as the "active" file, check if its size has increased. If so, re-process it to capture the new data.
+    -   **New File Detected**: If the `latest` file from the source is newer than the "current" file, the "current" file (which now corresponds to the `previous` file) is re-processed one last time to ensure it is complete. Afterwards, the new `latest` file is processed and staged as the new "current" file.
+    -   **Existing File Updated**: If the `latest` file from the source is the same as the "current" file, check if its size has increased. If so, re-process it to capture the new data.
 
 ### 6.1. Packet Extraction and Transformation
 
