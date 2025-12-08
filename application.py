@@ -26,13 +26,14 @@ from processor_interface import ProcessorInterface
 
 
 class Application:
-    def __init__(self, processor: ProcessorInterface):
-        self._logger: logging.Logger = logging.getLogger(__class__.__name__)
+    def __init__(self, processor: ProcessorInterface) -> None:
+        self._logger: logging.Logger = logging.getLogger(
+            self.__class__.__name__)
         self._processor = processor
         self._shutdown_requested: threading.Event = threading.Event()
         self._logger.info("Application initialized")
 
-    def run(self):
+    def run(self) -> None:
         self._logger.info("Application running")
         sleeper = InterruptibleSleeper(self)
         while not self._shutdown_requested.is_set():
@@ -44,5 +45,6 @@ class Application:
         sleeper.close()
 
     def handle_termination_signal(self, sig_no: int) -> None:
-        self._logger.info(f"Shutdown request (signal={signal.Signals(sig_no).name})")
+        sig_name = signal.Signals(sig_no).name
+        self._logger.info(f"Shutdown request (signal={sig_name})")
         self._shutdown_requested.set()

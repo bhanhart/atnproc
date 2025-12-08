@@ -44,14 +44,14 @@ import yaml
 logger: logging.Logger | None = None
 
 
-def info(message: str):
+def info(message: str) -> None:
     if logger:
         logger.info(message)
     else:
         print(message)
 
 
-def fatal(message: str):
+def fatal(message: str) -> None:
     if logger:
         logger.fatal(f"FATAL: {message}")
     else:
@@ -62,7 +62,11 @@ def fatal(message: str):
 def get_config_file_path() -> Path:
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-c", "--config-file", type=str, required=True, help="Configuration file"
+        "-c",
+        "--config-file",
+        type=str,
+        required=True,
+        help="Configuration file",
     )
     args = parser.parse_args()
     config_file = Path(args.config_file)
@@ -71,7 +75,7 @@ def get_config_file_path() -> Path:
     return config_file
 
 
-def configure_logging():
+def configure_logging() -> None:
     log_dir = Path("./log")
     log_dir.mkdir(exist_ok=True)
     with open("logging.yaml", "r") as f:
