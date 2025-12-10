@@ -1,3 +1,4 @@
+processing_interval_seconds: 60
 capture_directories:
   - /mnt/logs/archiver/atnr01-tds-fep/captures
   - /mnt/logs/archiver/atnr02-tds-fep/captures
