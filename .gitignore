@@ -12,3 +12,4 @@ wheels/
 airtel
 example
 unused
+*.log
