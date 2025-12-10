@@ -1,3 +1,10 @@
+"""Helpers to discover recent capture files using today/previous-day logic.
+
+This module exposes `RecentCaptureFileLoader`, `FileLoader` and
+`LatestCaptureFiles` to find and compare the two most recent capture files
+based on timestamps embedded in filenames.
+"""
+
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -6,6 +13,11 @@ from capture_file import CaptureFile
 
 
 class LatestCaptureFiles:
+    """Represents the two most recent capture files (latest and previous).
+
+    Provides helpers to compare a `CaptureFile` instance against the
+    discovered `latest` and `previous` capture files.
+    """
     def __init__(self, files: List[Path]) -> None:
         self._logger: logging.Logger = logging.getLogger(
             self.__class__.__name__)
@@ -41,6 +53,11 @@ class LatestCaptureFiles:
 
 
 class FileLoader:
+    """Load files from a list of directories using a glob pattern.
+
+    This is a small utility used by `RecentCaptureFileLoader` to collect
+    matching files from multiple directories.
+    """
     def __init__(self, directories: list[Path], pattern: str) -> None:
         self._logger: logging.Logger = logging.getLogger(
             self.__class__.__name__)
@@ -65,6 +82,12 @@ class FileLoader:
 
 
 class RecentCaptureFileLoader:
+    """Find recent capture files using a today-then-yesterday strategy.
+
+    Collects capture files matching today's date and, if fewer than two
+    are found, also collects yesterday's files to ensure two recent files
+    are available for processing.
+    """
     def __init__(self) -> None:
         self._logger: logging.Logger = logging.getLogger(
             self.__class__.__name__)

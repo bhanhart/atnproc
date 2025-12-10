@@ -1,3 +1,11 @@
+"""Helpers for capture file metadata and timestamp parsing.
+
+This module provides the :class:`CaptureFile` helper which wraps a
+``pathlib.Path`` and extracts the timestamp from filenames that use the
+project naming convention (timestamp at the end of the stem in
+``%Y%m%d%H%M%S`` format).
+"""
+
 from datetime import datetime, date
 from pathlib import Path
 

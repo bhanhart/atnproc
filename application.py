@@ -26,6 +26,13 @@ from processor_interface import ProcessorInterface
 
 
 class Application:
+    """Generic application run loop that orchestrates processor execution.
+
+    The :class:`Application` repeatedly calls ``processor.process()`` and
+    uses :class:`InterruptibleSleeper` to sleep between iterations while
+    allowing graceful shutdown via signals.
+    """
+
     def __init__(self, processor: ProcessorInterface) -> None:
         self._logger: logging.Logger = logging.getLogger(
             self.__class__.__name__)

@@ -1,3 +1,10 @@
+"""Interruptible sleeper utility used by the application run loop.
+
+This module provides the `InterruptibleSleeper` class, that allows the main
+application loop to sleep in an interruptible manner so shutdown requests
+can wake the sleeper and let the application perform a controlled exit.
+"""
+
 import logging
 import os
 import select
@@ -7,11 +14,24 @@ from typing import Protocol, Optional
 
 
 class TerminationHandler(Protocol):
+    """Protocol for objects that handle termination signals.
+
+    Implementors should provide ``handle_termination_signal`` which will be
+    invoked with the integer signal number when a termination signal is
+    received by :class:`InterruptibleSleeper`.
+    """
+
     def handle_termination_signal(self, sig_no: int) -> None:
         ...
 
 
 class InterruptibleSleeper:
+    """Sleeps in an interruptible fashion and forwards termination signals.
+
+    The `InterruptibleSleeper` registers signal handlers for SIGINT and
+    SIGTERM and wakes the blocked select() when a termination signal is
+    received so the application can handle shutdown promptly.
+    """
     def __init__(self, termination_handler: TerminationHandler) -> None:
         self._logger = logging.getLogger(self.__class__.__name__)
         self._termination_callback = termination_handler

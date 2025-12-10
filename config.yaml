@@ -3,5 +3,5 @@ capture_directories:
   - /mnt/logs/archiver/atnr02-tds-fep/captures
 work_directories:
   input_directory: /var/tmp/alcp/input
-  current_directory: /var/tmp/alcp/current
+  active_directory: /var/tmp/alcp/active
   output_directory: /var/tmp/alcp/output

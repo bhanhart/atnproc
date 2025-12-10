@@ -1,3 +1,9 @@
+"""Configuration loader for the application.
+
+Loads YAML configuration and exposes working and capture directories as
+pathlib `Path` properties used elsewhere in the application.
+"""
+
 from pathlib import Path
 from typing import Any
 
@@ -5,13 +11,18 @@ import yaml
 
 
 class Configuration:
+    """Load and expose configured filesystem paths for the application.
+
+    Holds `capture_directories` and `work_directories` entries parsed from the
+    YAML configuration file and exposes them as `pathlib.Path` properties.
+    """
     _capture_directories: list[Path]
     _input_directory: Path
     _active_directory: Path
     _output_directory: Path
 
     def __init__(self, config_file: Path):
-        with open(config_file) as f:
+        with open(config_file, encoding="utf-8") as f:
             config: Any = yaml.safe_load(f)
         capture_dirs = config["capture_directories"]
         self._capture_directories = [Path(d) for d in capture_dirs]

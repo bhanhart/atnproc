@@ -1,36 +1,25 @@
+"""Processor implementation for ATN capture processing.
+
+Contains `AtnCaptureProcessor` which implements `ProcessorInterface` and
+coordinates discovery of recent capture files and staging them into the
+work area for downstream processing.
+"""
+
 import logging
 from datetime import timedelta
-from pathlib import Path
-from typing import Optional
-from capture_file import CaptureFile
 from capture_file_loader import LatestCaptureFiles, RecentCaptureFileLoader
 from processor_interface import ProcessorInterface
 from config import Configuration
-
-
-class WorkArea:
-    def __init__(self, active_directory: Path):
-        self.active_directory = active_directory
-        self._logger: logging.Logger = logging.getLogger(
-            self.__class__.__name__)
-
-    def get_active_file(self) -> Optional[CaptureFile]:
-        pattern = "active_capture_*.pcap"
-        active_files = list(self.active_directory.glob(pattern))
-        if active_files:
-            return CaptureFile(active_files[0])
-        return None
-
-    def stage_capture_file(self, capture_file: CaptureFile) -> None:
-        destination = self.active_directory / capture_file.name
-        self._logger.info(
-            f"Staging capture file {capture_file.path} to {destination}")
-        # Here you would add code to copy/move the file to the active directory
-        # For example:
-        # shutil.copy(capture_file.path, destination)
+from work_area import WorkArea
 
 
 class AtnCaptureProcessor(ProcessorInterface):
+    """Processor that coordinates capture file discovery and staging.
+
+    Implements `ProcessorInterface.process()` to locate the two most recent
+    capture files and stage the appropriate file into the work area for
+    downstream processing.
+    """
     def __init__(self, config: Configuration) -> None:
         self._config: Configuration = config
         self._logger: logging.Logger = logging.getLogger(

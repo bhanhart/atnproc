@@ -28,17 +28,15 @@ Implementation outline:
 
 import argparse
 import logging
+import logging.config
 import sys
 from pathlib import Path
 
+import yaml
+
 from application import Application
 from atn_capture_processor import AtnCaptureProcessor
-
 from config import Configuration
-
-import logging.config
-
-import yaml
 
 
 logger: logging.Logger | None = None
@@ -78,7 +76,7 @@ def get_config_file_path() -> Path:
 def configure_logging() -> None:
     log_dir = Path("./log")
     log_dir.mkdir(exist_ok=True)
-    with open("logging.yaml", "r") as f:
+    with open("logging.yaml", "r", encoding="utf-8") as f:
         logging.config.dictConfig(yaml.safe_load(f))
 
 
@@ -91,13 +89,22 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    configure_logging()
+    logger = logging.getLogger(__name__)
     try:
-        configure_logging()
-        logger = logging.getLogger(__name__)
-        exit_code = main()
-        info(f"Normal exit with exit code: {exit_code}")
-    except Exception as exc:
-        fatal(f"Unexpected exception: {exc}")
-        fatal("Exiting...")
-        exit_code = 1
-    sys.exit(exit_code)
+        exit_status = main()
+    except KeyboardInterrupt:
+        logger.info("Interrupted by user (KeyboardInterrupt)")
+        # Standard POSIX exit code for terminated by Ctrl+C
+        sys.exit(130)
+    except SystemExit as se:
+        # Allow explicit sys.exit() calls to propagate after logging.
+        logger.info(f"Exit requested: {se.code}")
+        raise
+    except Exception:  # pylint: disable=broad-exception-caught
+        # Log the full traceback for unexpected exceptions and exit with 1.
+        logger.exception("Unexpected exception during run")
+        sys.exit(1)
+    else:
+        info(f"Normal exit with exit code: {exit_status}")
+        sys.exit(exit_status)
