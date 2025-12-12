@@ -13,7 +13,8 @@ from typing import List, Optional
 
 
 class CaptureFile:
-    """Represents a capture file and provides timestamp helpers.
+    """Represents a capture file and provides access to the file's creation
+       timestamp.
 
     Extracts a timestamp from the file stem using the expected naming
     convention and exposes convenience properties used by the processing
@@ -28,11 +29,7 @@ class CaptureFile:
 
     @property
     def timestamp(self) -> datetime:
-        return self.parse_timestamp(self._file)
-
-    @staticmethod
-    def parse_timestamp(file: Path) -> datetime:
-        timestamp_str = file.stem.split("_")[-1]
+        timestamp_str = self._file.stem.split("_")[-1]
         return datetime.strptime(timestamp_str, "%Y%m%d%H%M%S")
 
     @property
@@ -43,45 +40,32 @@ class CaptureFile:
     def path(self) -> Path:
         return self._file
 
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, CaptureFile):
+            return self.name == other.name
+        return NotImplemented
 
-class LatestCaptureFiles:
-    """Represents the two most recent capture files (latest and previous).
 
-    Provides helpers to compare a `CaptureFile` instance against the
-    discovered `latest` and `previous` capture files.
+class CaptureFileList:
+    """Represents a list of capture files, sorted most recent first.
     """
     def __init__(self, files: List[Path]) -> None:
         self._logger: logging.Logger = logging.getLogger(
             self.__class__.__name__)
-        self._latest: Optional[CaptureFile] = None
-        self._previous: Optional[CaptureFile] = None
-        sorted_files: List[Path] = sorted(
-            files,
-            key=CaptureFile.parse_timestamp,
+        self._sorted_files: List[CaptureFile] = sorted(
+            [CaptureFile(file) for file in files],
+            key=lambda file: file.timestamp,
             reverse=True
-        )[:2]
-        if len(sorted_files) > 0:
-            self._latest = CaptureFile(sorted_files[0])
-            if len(sorted_files) > 1:
-                self._previous = CaptureFile(sorted_files[1])
-
-    def is_empty(self) -> bool:
-        return self._latest is None
-
-    def is_equal_to_latest(self, capture_file: CaptureFile) -> bool:
-        if self._latest is None:
-            return False
-        return self._latest.name == capture_file.name
-
-    def is_equal_to_previous(self, capture_file: CaptureFile) -> bool:
-        if self._previous is None:
-            return False
-        return self._previous.name == capture_file.name
+        )
 
     @property
     def latest(self) -> Optional[CaptureFile]:
-        return self._latest
+        if len(self._sorted_files) == 0:
+            return None
+        return self._sorted_files[0]
 
     @property
     def previous(self) -> Optional[CaptureFile]:
-        return self._previous
+        if len(self._sorted_files) < 2:
+            return None
+        return self._sorted_files[1]

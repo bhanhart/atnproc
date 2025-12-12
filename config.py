@@ -35,7 +35,7 @@ class Configuration:
     @property
     def processing_interval_seconds(self) -> int:
         return self._processing_interval_seconds
-    
+
     @property
     def capture_directories(self) -> list[Path]:
         return self._capture_directories
