@@ -1,0 +1,5 @@
+# Installs all runtime dependencies from requirements.txt
+-r requirements.txt
+
+# Development-specific dependencies
+pylint
