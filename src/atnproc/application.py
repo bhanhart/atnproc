@@ -21,8 +21,8 @@ from datetime import timedelta
 import logging
 import signal
 import threading
-from interruptable_sleeper import InterruptibleSleeper
-from processor_interface import ProcessorInterface
+from atnproc.interruptable_sleeper import InterruptibleSleeper
+from atnproc.processor_interface import ProcessorInterface
 
 
 class Application:

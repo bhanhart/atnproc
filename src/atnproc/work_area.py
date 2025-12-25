@@ -7,7 +7,7 @@ directory used to stage capture files for processing.
 import logging
 from pathlib import Path
 from typing import Optional
-from capture_file import CaptureFile
+from atnproc.capture_file import CaptureFile
 
 
 class WorkArea:

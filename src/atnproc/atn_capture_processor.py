@@ -7,11 +7,11 @@ work area for downstream processing.
 
 import logging
 from datetime import timedelta
-from capture_file_loader import load_recent_capture_files
-from capture_file import CaptureFileList
-from processor_interface import ProcessorInterface
-from config import Configuration
-from work_area import WorkArea
+from atnproc.capture_file_loader import load_recent_capture_files
+from atnproc.capture_file import CaptureFileList
+from atnproc.processor_interface import ProcessorInterface
+from atnproc.config import Configuration
+from atnproc.work_area import WorkArea
 
 
 class AtnCaptureProcessor(ProcessorInterface):

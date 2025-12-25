@@ -34,9 +34,9 @@ from pathlib import Path
 
 import yaml
 
-from application import Application
-from atn_capture_processor import AtnCaptureProcessor
-from config import Configuration
+from atnproc.application import Application
+from atnproc.atn_capture_processor import AtnCaptureProcessor
+from atnproc.config import Configuration
 
 
 logger: logging.Logger | None = None
@@ -76,7 +76,7 @@ def get_config_file_path() -> Path:
 def configure_logging() -> None:
     log_dir = Path("./log")
     log_dir.mkdir(exist_ok=True)
-    with open("logging.yaml", "r", encoding="utf-8") as f:
+    with open("config/logging.yaml", "r", encoding="utf-8") as f:
         logging.config.dictConfig(yaml.safe_load(f))
 
 
