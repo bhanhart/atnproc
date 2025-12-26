@@ -17,5 +17,5 @@ jobs:
         uses: DavidAnson/markdownlint-cli2-action@v15
         with:
           globs: |
-            '**/*.{md,MD}'
+            'docs/**/*.{md,MD}'
             '!**/node_modules/**'
