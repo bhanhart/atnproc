@@ -4,3 +4,4 @@
 # Development-specific dependencies
 pylint
 mypy
+types-PyYAML
