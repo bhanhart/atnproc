@@ -3,3 +3,4 @@
 
 # Development-specific dependencies
 pylint
+mypy
