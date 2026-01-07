@@ -1,4 +1,4 @@
-"""Helpers for capture file metadata and timestamp parsing.
+"""Capture file metadata and timestamp parsing.
 
 This module provides the :class:`CaptureFile` helper which wraps a
 ``pathlib.Path`` and extracts the timestamp from filenames that use the
@@ -6,10 +6,8 @@ project naming convention (timestamp at the end of the stem in
 ``%Y%m%d%H%M%S`` format).
 """
 
-import logging
 from datetime import datetime, date
 from pathlib import Path
-from typing import List, Optional
 
 
 class CaptureFile:
@@ -20,8 +18,17 @@ class CaptureFile:
     convention and exposes convenience properties used by the processing
     code.
     """
+
     def __init__(self, file: Path):
         self._file: Path = file
+
+    @staticmethod
+    def date_format() -> str:
+        return "%Y%m%d"
+
+    @staticmethod
+    def time_format() -> str:
+        return "%H%M%S"
 
     @property
     def date(self) -> date:
@@ -30,7 +37,9 @@ class CaptureFile:
     @property
     def timestamp(self) -> datetime:
         timestamp_str = self._file.stem.split("_")[-1]
-        return datetime.strptime(timestamp_str, "%Y%m%d%H%M%S")
+        return datetime.strptime(
+            timestamp_str, f"{self.date_format()}{self.time_format()}"
+        )
 
     @property
     def name(self) -> str:
@@ -39,33 +48,3 @@ class CaptureFile:
     @property
     def path(self) -> Path:
         return self._file
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, CaptureFile):
-            return self.name == other.name
-        return NotImplemented
-
-
-class CaptureFileList:
-    """Represents a list of capture files, sorted most recent first.
-    """
-    def __init__(self, files: List[Path]) -> None:
-        self._logger: logging.Logger = logging.getLogger(
-            self.__class__.__name__)
-        self._sorted_files: List[CaptureFile] = sorted(
-            [CaptureFile(file) for file in files],
-            key=lambda file: file.timestamp,
-            reverse=True
-        )
-
-    @property
-    def latest(self) -> Optional[CaptureFile]:
-        if len(self._sorted_files) == 0:
-            return None
-        return self._sorted_files[0]
-
-    @property
-    def previous(self) -> Optional[CaptureFile]:
-        if len(self._sorted_files) < 2:
-            return None
-        return self._sorted_files[1]

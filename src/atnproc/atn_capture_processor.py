@@ -7,8 +7,8 @@ work area for downstream processing.
 
 import logging
 from datetime import timedelta
-from atnproc.capture_file_loader import load_recent_capture_files
-from atnproc.capture_file import CaptureFileList
+from atnproc.recent_capture_file_loader import RecentCaptureFileLoader
+from atnproc.recent_capture_files import RecentCaptureFiles
 from atnproc.processor_interface import ProcessorInterface
 from atnproc.config import Configuration
 from atnproc.work_area import WorkArea
@@ -21,37 +21,45 @@ class AtnCaptureProcessor(ProcessorInterface):
     capture files and stage the appropriate file into the work area for
     downstream processing.
     """
+
     def __init__(self, config: Configuration) -> None:
         self._config: Configuration = config
-        self._logger: logging.Logger = logging.getLogger(
-            self.__class__.__name__)
-        self._work_area = WorkArea(config.active_directory)
+        self._logger: logging.Logger = logging.getLogger(self.__class__.__name__)
+        self._work_area = WorkArea(config.work_area)
 
     def process(self) -> timedelta:
-        capture_files = CaptureFileList(
-            load_recent_capture_files(self._config.capture_directories))
+        file_loader = RecentCaptureFileLoader(self._config.capture_directories)
+        capture_files = RecentCaptureFiles(file_loader.files)
+        self._work_area.ingest_files(capture_files.files)
         if capture_files.latest:
-            active_capture_file = self._work_area.get_active_file()
-            if not active_capture_file:
+            current_capture_file = self._work_area.get_current_file()
+            if not current_capture_file:
                 self._logger.info(
-                    f"No currently active capture file, processing: {capture_files.latest}")
-                self._work_area.stage_capture_file(capture_files.latest)
+                    f"No current capture file, processing: {capture_files.latest}"
+                )
+                self._work_area.set_current_file(capture_files.latest)
             else:
-                self._logger.info(f"Found active capture file: {active_capture_file}")
-                if active_capture_file == capture_files.latest:
+                self._logger.info(f"Found current capture file: {current_capture_file}")
+                if current_capture_file.name == capture_files.latest.name:
                     self._logger.info(
-                        f"Active capture file is latest available: {active_capture_file}")
-                    self._work_area.stage_capture_file(capture_files.latest)
+                        f"Current capture file is latest available: {current_capture_file}"
+                    )
+                    self._work_area.set_current_file(capture_files.latest)
                 else:
-                    if capture_files.previous and active_capture_file == capture_files.previous:
+                    if (
+                        capture_files.previous
+                        and current_capture_file == capture_files.previous
+                    ):
                         self._logger.info(
                             "Staging previous and latest capture files: "
-                            f"{capture_files.previous}, {capture_files.latest}")
-                        self._work_area.stage_capture_file(capture_files.previous)
-                        self._work_area.stage_capture_file(capture_files.latest)
+                            f"{capture_files.previous}, {capture_files.latest}"
+                        )
+                        self._work_area.set_current_file(capture_files.previous)
+                        self._work_area.set_current_file(capture_files.latest)
                     else:
                         self._logger.info(
-                            f"Staging new capture file: {capture_files.latest}")
-                        self._work_area.stage_capture_file(capture_files.latest)
+                            f"Staging new capture file: {capture_files.latest}"
+                        )
+                        self._work_area.set_current_file(capture_files.latest)
 
         return timedelta(seconds=self._config.processing_interval_seconds)
