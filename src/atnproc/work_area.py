@@ -5,6 +5,7 @@ directory used to stage capture files for processing.
 """
 
 import logging
+import shutil
 from pathlib import Path
 from typing import Optional
 from atnproc.capture_file import CaptureFile
@@ -25,21 +26,18 @@ class WorkArea:
         self._output_directory = config.output_directory
 
     def ingest_files(self, files: list[Path]) -> None:
-        for file in files:
-            self._logger.debug(f"Ingested file into work area: {file}")
+        for src_file in files:
+            dst_file = self._input_directory / src_file.name
+            shutil.copy2(src_file, dst_file)
+            self._logger.debug(f"Copied {src_file} to {dst_file}")
 
     def get_current_file(self) -> Optional[CaptureFile]:
-        pattern = "active_capture_*.pcap"
-        active_files = list(self._current_directory.glob(pattern))
-        if active_files:
-            return CaptureFile(active_files[0])
+        current_files = list(self._current_directory.glob("*.pcap"))
+        if current_files:
+            return CaptureFile(current_files[0])
         return None
 
     def set_current_file(self, capture_file: CaptureFile) -> None:
-        destination = self._current_directory / capture_file.name
-        self._logger.info(
-            f"Staging capture file {capture_file.path} to {destination}")
-        # Here you would add code to copy/move the file to the current directory
-        # For example:
-        # import shutil
-        # shutil.copy2(capture_file.path, destination)
+        dst_file = self._current_directory / capture_file.name
+        shutil.copy2(capture_file.path, dst_file)
+        self._logger.debug(f"Copied {capture_file.path} to {dst_file}")

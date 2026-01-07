@@ -42,24 +42,19 @@ class AtnCaptureProcessor(ProcessorInterface):
                 self._logger.info(f"Found current capture file: {current_capture_file}")
                 if current_capture_file.name == capture_files.latest.name:
                     self._logger.info(
-                        f"Current capture file is latest available: {current_capture_file}"
+                        f"Processing latest capture file: {current_capture_file}"
                     )
-                    self._work_area.set_current_file(capture_files.latest)
                 else:
-                    if (
-                        capture_files.previous
-                        and current_capture_file == capture_files.previous
-                    ):
-                        self._logger.info(
-                            "Staging previous and latest capture files: "
-                            f"{capture_files.previous}, {capture_files.latest}"
-                        )
-                        self._work_area.set_current_file(capture_files.previous)
-                        self._work_area.set_current_file(capture_files.latest)
+                    if capture_files.previous:
+                        if current_capture_file == capture_files.previous:
+                            self._logger.info(
+                                f"Processing previous capture file: {capture_files.previous}")
+                            self._logger.info(
+                                f"Processing latest capture file: {capture_files.latest}")
+                            self._work_area.set_current_file(capture_files.latest)
                     else:
                         self._logger.info(
-                            f"Staging new capture file: {capture_files.latest}"
-                        )
+                            f"Processing new capture file: {capture_files.latest}")
                         self._work_area.set_current_file(capture_files.latest)
 
         return timedelta(seconds=self._config.processing_interval_seconds)
