@@ -1,50 +1,46 @@
-"""Capture file metadata and timestamp parsing.
+"""Representations of an actual capture file instance in the filesystem.
 
-This module provides the :class:`CaptureFile` helper which wraps a
-``pathlib.Path`` and extracts the timestamp from filenames that use the
-project naming convention (timestamp at the end of the stem in
-``%Y%m%d%H%M%S`` format).
+This module provides the :class:`CaptureFilePath` helper which wraps a
+``pathlib.Path`` and provides access to capture-related metadata.
 """
 
 from datetime import datetime, date
 from pathlib import Path
 
+from atnproc.capture_file_name import CaptureFileName
+
 
 class CaptureFile:
-    """Represents a capture file and provides access to the file's creation
-       timestamp.
-
-    Extracts a timestamp from the file stem using the expected naming
-    convention and exposes convenience properties used by the processing
-    code.
-    """
+    """Represents a capture file on the filesystem."""
 
     def __init__(self, file: Path):
         self._file: Path = file
-
-    @staticmethod
-    def date_format() -> str:
-        return "%Y%m%d"
-
-    @staticmethod
-    def time_format() -> str:
-        return "%H%M%S"
+        self._name: CaptureFileName = CaptureFileName(file.name)
 
     @property
     def date(self) -> date:
-        return self.timestamp.date()
+        """Returns the date part of the file's timestamp."""
+        return self._name.date
 
     @property
     def timestamp(self) -> datetime:
-        timestamp_str = self._file.stem.split("_")[-1]
-        return datetime.strptime(
-            timestamp_str, f"{self.date_format()}{self.time_format()}"
-        )
+        """Returns the file's timestamp."""
+        return self._name.timestamp
 
     @property
-    def name(self) -> str:
-        return self._file.name
+    def name(self) -> CaptureFileName:
+        """Returns the file's name."""
+        return self._name
 
     @property
     def path(self) -> Path:
+        """Returns the file's path."""
         return self._file
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, CaptureFile):
+            return NotImplemented
+        return self.path == other.path
+
+    def __hash__(self) -> int:
+        return hash(self.path)

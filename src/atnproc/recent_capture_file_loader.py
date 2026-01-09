@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List
 
+from atnproc.capture_file_name import CaptureFileName
 from atnproc.capture_file import CaptureFile
 from atnproc.file_loader import FileLoader
 
@@ -31,13 +32,13 @@ class RecentCaptureFileLoader:
     def _load_files(self) -> None:
         # Load today's files
         today = datetime.today()
-        today_str = today.strftime(CaptureFile.date_format())
+        today_str = today.strftime(CaptureFileName.date_format())
         today_pattern = f"*_{today_str}*.pcap"
         self._file_loader.load_files(today_pattern)
 
         if self._file_loader.num_files < 2:
             # Load yesterday's files
             yesterday = today - timedelta(days=1)
-            yesterday_str = yesterday.strftime(CaptureFile.date_format())
+            yesterday_str = yesterday.strftime(CaptureFileName.date_format())
             yesterday_pattern = f"*_{yesterday_str}*.pcap"
             self._file_loader.load_files(yesterday_pattern)

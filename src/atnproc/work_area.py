@@ -38,6 +38,6 @@ class WorkArea:
         return None
 
     def set_current_file(self, capture_file: CaptureFile) -> None:
-        dst_file = self._current_directory / capture_file.name
+        dst_file = self._current_directory / str(capture_file.name)
         shutil.copy2(capture_file.path, dst_file)
         self._logger.debug(f"Copied {capture_file.path} to {dst_file}")
