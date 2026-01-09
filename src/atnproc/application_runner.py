@@ -1,6 +1,6 @@
-"""Processor implementation for ATN capture processing.
+"""Runner implementation for ATN capture processing.
 
-Contains `AtnCaptureProcessor` which implements `ProcessorInterface` and
+Contains `ApplicationRunner` which implements `RunnerInterface` and
 coordinates discovery of recent capture files and staging them into the
 work area for downstream processing.
 """
@@ -9,15 +9,15 @@ import logging
 from datetime import timedelta
 from atnproc.recent_capture_file_loader import RecentCaptureFileLoader
 from atnproc.recent_capture_files import RecentCaptureFiles
-from atnproc.processor_interface import ProcessorInterface
+from atnproc.runner_interface import RunnerInterface
 from atnproc.config import Configuration
 from atnproc.work_area import WorkArea
 
 
-class AtnCaptureProcessor(ProcessorInterface):
+class ApplicationRunner(RunnerInterface):
     """Processor that coordinates capture file discovery and staging.
 
-    Implements `ProcessorInterface.process()` to locate the two most recent
+    Implements `RunnerInterface.process()` to locate the two most recent
     capture files and stage the appropriate file into the work area for
     downstream processing.
     """
@@ -27,7 +27,7 @@ class AtnCaptureProcessor(ProcessorInterface):
         self._logger: logging.Logger = logging.getLogger(self.__class__.__name__)
         self._work_area = WorkArea(config.work_area)
 
-    def process(self) -> timedelta:
+    def run(self) -> timedelta:
         file_loader = RecentCaptureFileLoader(self._config.capture_directories)
         capture_files = RecentCaptureFiles(file_loader.files)
         self._work_area.ingest_files(capture_files.files)

@@ -4,7 +4,7 @@ graceful shutdown.
 
 Application class functionality:
 
-- Constructed with with a `ProcessorInterface` instance.
+- Constructed with with a `RunnerInterface` instance.
 - Repeatedly calls `processor.process()` to perform work; that method
     returns a `datetime.timedelta` indicating how long the application should
     sleep before the next iteration.
@@ -22,31 +22,32 @@ import logging
 import signal
 import threading
 from atnproc.interruptable_sleeper import InterruptibleSleeper
-from atnproc.processor_interface import ProcessorInterface
+from atnproc.runner_interface import RunnerInterface
 
 
 class Application:
-    """Generic application run loop that orchestrates processor execution.
+    """Generic application run loop.
 
-    The :class:`Application` repeatedly calls ``processor.process()`` and
+    The :class:`Application` repeatedly calls ``runner.run()`` and
     uses :class:`InterruptibleSleeper` to sleep between iterations while
     allowing graceful shutdown via signals.
     """
 
-    def __init__(self, processor: ProcessorInterface) -> None:
+    def __init__(self, runner: RunnerInterface) -> None:
         self._logger: logging.Logger = logging.getLogger(
             self.__class__.__name__)
-        self._processor = processor
+        self._runner = runner
         self._shutdown_requested: threading.Event = threading.Event()
         self._logger.info("Application initialized")
 
-    def run(self) -> None:
+    def start(self) -> None:
         self._logger.info("Application running")
         sleeper = InterruptibleSleeper(self)
         while not self._shutdown_requested.is_set():
-            self._logger.debug("Start processing...")
-            sleep_duration: timedelta = self._processor.process()
-            self._logger.debug("Application sleeping...")
+            self._logger.debug("Run loop iteration starting...")
+            sleep_duration: timedelta = self._runner.run()
+            self._logger.debug("Run loop iteration finished")
+            self._logger.debug(f"Sleeping for {sleep_duration.total_seconds()} seconds...")
             sleeper.sleep(sleep_duration)
         self._logger.info("Shutdown requested, exiting application")
         sleeper.close()

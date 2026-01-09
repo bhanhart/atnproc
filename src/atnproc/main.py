@@ -35,7 +35,7 @@ from pathlib import Path
 import yaml
 
 from atnproc.application import Application
-from atnproc.atn_capture_processor import AtnCaptureProcessor
+from atnproc.application_runner import ApplicationRunner
 from atnproc.config import Configuration
 
 
@@ -82,9 +82,9 @@ def configure_logging() -> None:
 
 def main() -> int:
     config = Configuration(get_config_file_path())
-    processor = AtnCaptureProcessor(config)
+    processor = ApplicationRunner(config)
     application = Application(processor)
-    application.run()
+    application.start()
     return 0
 
 
