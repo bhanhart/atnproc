@@ -24,6 +24,10 @@ class WorkArea:
         self._input_directory = config.input_directory
         self._current_directory = config.current_directory
         self._output_directory = config.output_directory
+        self._current_file: Optional[CaptureFile] = None
+        current_files = list(self._current_directory.glob("*.pcap"))
+        if current_files:
+            self._current_file = CaptureFile(current_files[0])
 
     def ingest_files(self, files: list[Path]) -> None:
         for src_file in files:
@@ -31,11 +35,8 @@ class WorkArea:
             shutil.copy2(src_file, dst_file)
             self._logger.debug(f"Copied {src_file} to {dst_file}")
 
-    def get_current_file(self) -> Optional[CaptureFile]:
-        current_files = list(self._current_directory.glob("*.pcap"))
-        if current_files:
-            return CaptureFile(current_files[0])
-        return None
+    def get_current_capture_file(self) -> Optional[CaptureFile]:
+        return self._current_file
 
     def set_current_file(self, capture_file: CaptureFile) -> None:
         dst_file = self._current_directory / str(capture_file.name)

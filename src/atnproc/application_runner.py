@@ -15,9 +15,9 @@ from atnproc.work_area import WorkArea
 
 
 class ApplicationRunner(RunnerInterface):
-    """Processor that coordinates capture file discovery and staging.
+    """Coordinates capture file discovery and staging.
 
-    Implements `RunnerInterface.process()` to locate the two most recent
+    Implements `RunnerInterface.run()` to locate the two most recent
     capture files and stage the appropriate file into the work area for
     downstream processing.
     """
@@ -32,7 +32,7 @@ class ApplicationRunner(RunnerInterface):
         capture_files = RecentCaptureFiles(file_loader.files)
         self._work_area.ingest_files(capture_files.files)
         if capture_files.latest:
-            current_capture_file = self._work_area.get_current_file()
+            current_capture_file = self._work_area.get_current_capture_file()
             if not current_capture_file:
                 self._logger.info(
                     f"No current capture file, processing: {capture_files.latest}"

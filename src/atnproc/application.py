@@ -1,11 +1,11 @@
 """
-The Application class provides a generic event loop and support for
+The ApplicationLoop class provides a generic event loop and support for
 graceful shutdown.
 
-Application class functionality:
+Functionality:
 
 - Constructed with with a `RunnerInterface` instance.
-- Repeatedly calls `processor.process()` to perform work; that method
+- Repeatedly calls `runner.run()` to perform work; that method
     returns a `datetime.timedelta` indicating how long the application should
     sleep before the next iteration.
 - Uses `InterruptibleSleeper` to sleep in an interruptible manner so shutdown
@@ -25,10 +25,10 @@ from atnproc.interruptable_sleeper import InterruptibleSleeper
 from atnproc.runner_interface import RunnerInterface
 
 
-class Application:
+class ApplicationLoop:
     """Generic application run loop.
 
-    The :class:`Application` repeatedly calls ``runner.run()`` and
+    The :class:`ApplicationLoop` repeatedly calls ``runner.run()`` and
     uses :class:`InterruptibleSleeper` to sleep between iterations while
     allowing graceful shutdown via signals.
     """

@@ -2,7 +2,7 @@
 ignore=venv,.venv
 
 [MESSAGES CONTROL]
-disable=logging-fstring-interpolation,missing-function-docstring,too-few-public-methods,invalid-name
+disable=logging-fstring-interpolation,missing-function-docstring,too-few-public-methods
 
 [FORMAT]
 max-line-length=100
