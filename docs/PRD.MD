@@ -19,7 +19,8 @@ The system is designed to handle capture files that are continuously transferred
 
 | ID | Requirement |
 | --- | --- |
-| FR-2 | **File Filtering**: The application shall identify and process files with a `.pcap` extension. |
+| FR-1 | **File Selection**: The application shall scan for files with a `.pcap` extension. |
+| FR-2 | **File Filtering**: The application shall filter files based on the date timestamp encoded in the filename. |
 | FR-3 | **Packet Filtering**: The application shall extract network packets from capture files that are related to a specific, configurable IP address and ATN protocol. |
 | FR-4 | **Data Transformation**: The application shall convert each extracted ATN packet into a single-line text record. |
 | FR-5 | **Output Generation**: The application shall write the transformed text records to output files in a designated directory, ready for consumption by Filebeat. |
@@ -63,10 +64,12 @@ To determine which files to process, the application shall:
 
 ## 6. Processing Strategy
 
-To handle growing files and ensure no data is missed, the application will use a working directory and a stateful processing loop. The guiding principle is that older files must be fully processed before newer files.
+### 6.1 Capture File Scanning and Processing
+
+To handle growing files and ensure no data is missed, the application will use a working (input) directory and a stateful processing loop. The guiding principle is that older files must be fully processed before newer files.
 
 1. **Identify Candidates**: In each cycle, identify the two most recent capture files from the source directories (referred to as `latest` and `previous`).
-2. **Copy to Work Area**: To prevent issues with `rsync` changing a file during processing, copy the candidate files to a local working directory for processing.
+2. **Copy to Work Area**: To prevent issues with `rsync` changing a file during processing, copy the candidate files to a local working (input) directory for processing.
 3. **State Management**: Maintain the concept of a "current" file, which is the file currently being processed. This file's state is tracked by its presence in a dedicated "current" directory.
 4. **Initial Run**: If no "current" file exists:
     - If a `previous` file is identified, it is processed first.
@@ -75,23 +78,37 @@ To handle growing files and ensure no data is missed, the application will use a
     - **New File Detected**: If the `latest` file from the source is newer than the "current" file, the "current" file (which now corresponds to the `previous` file) is re-processed one last time to ensure it is complete. Afterwards, the new `latest` file is processed and staged as the new "current" file.
     - **Existing File Updated**: If the `latest` file from the source is the same as the "current" file, check if its size has increased. If so, re-process it to capture the new data.
 
-### 6.1. Packet Extraction and Transformation
+### 6.2. Packet Extraction and Transformation
 
-The core packet processing step (referenced above as "processed") involves using the `tcpdump` command-line utility to filter and transform the data. For each capture file designated for processing:
+The core packet processing step (referenced above as "processed") involves using the `tcpdump` command-line utility and an awk conversion script, to filter and transform the data to conform to the desired output format.
 
-1. The `tcpdump` program shall be executed on the `.pcap` file located in the working area.
-2. The filter expression shall select packets based on:
-    - A configurable host IP address.
-    - The ISO-on-TCP protocol (IP protocol number 80).
-    1. The `tcpdump` utility generates a multi-line, hexadecimal output for each packet. This output is then piped to a conversion script (`rtcd_routerlog.awk`) for transformation into a single-line format.
-    2. The conversion script processes each packet and generates a single output line with the following space-separated components:
-        1. The literal string `ROUTER CLNS_DT_PDU`.
-        2. The timestamp from the `tcpdump` header.
-        3. The direction of the packet: `SENT` if the source IP matches the monitored IP, `RCVD` otherwise.
-        4. The length of the ATN PDU (the payload of the IP packet).
-        5. The remote IP address (the other party in the communication).
-        6. The raw ATN (CLNP) PDU as a continuous hex string (with the 20-byte IPv4 header removed).
-    3. The final, single-line records are written to a file in the output directory, ready for consumption.
+For each capture file designated for processing:
+
+1. The `tcpdump` program shall be executed on the `.pcap` file located in the current directory of the working area.
+2. The `tcpdump` command shall use the following arguments:
+
+   - Do not convert host addresses to names (`-n`).
+   - Output the link level header on each line (`-e`)
+   - Output the data of each packet in hex (`-x`).
+   - Output a detailed timestamp including fractions of a second (`-tttt`).
+   - Filter packets based on:
+      - A configurable host IP address (`ip host <ip_address>)
+      - The ISO-on-TCP protocol with number 80 (`proto 80`).
+
+3. An example invocation of the 'tcpdump' command would be: `/usr/sbin/tcpdump -r atnr01_net3_00001_20251229154959.pcap -n -e -x -tttt -l ip host 156.135.249.28 and proto 80`
+4. The `tcpdump` generates a multi-line output for each packet that is then piped to an awk conversion script (`rtcd_routerlog.awk`) for transformation into a single-line format.
+5. The `rtcd_routerlog.awk` script generates the following, space delimited, single line of output for each packet:
+
+   - The literal string `ROUTER CLNS_DT_PDU`.
+   - The timestamp from the `tcpdump` header.
+   - The direction of the packet: `SENT` if the source IP matches the monitored IP, `RCVD` otherwise.
+   - The length of the ATN PDU (the payload of the IP packet).
+   - The remote IP address (the other party in the communication).
+   - The raw ATN (CLNP) PDU as a continuous hex string (with the 20-byte IPv4 header removed).
+
+6. The single-line records are written to a temporary file.
+7. A diff shall be performed between the existing output file in the output directory and the temporary file.
+8. Any newly added records shall be appended to the output file.
 
 ## 7. Assumptions
 
