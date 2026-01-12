@@ -20,6 +20,7 @@ mapfile -t FILES < <(find "$ROOT_DIR" \
   -path "$ROOT_DIR/.venv" -prune -o \
   -path "$ROOT_DIR/venv" -prune -o \
   -path "$ROOT_DIR/.git" -prune -o \
+  -path "$ROOT_DIR/unused" -prune -o \
   -name '*.py' -print)
 
 if [ ${#FILES[@]} -eq 0 ]; then

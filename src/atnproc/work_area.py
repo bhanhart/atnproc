@@ -9,7 +9,7 @@ import shutil
 from pathlib import Path
 from typing import Optional
 from atnproc.capture_file import CaptureFile
-from atnproc.config import WorkAreaConfig
+from atnproc.config import WorkDirectories
 
 
 class WorkArea:
@@ -18,20 +18,19 @@ class WorkArea:
     Provides helpers to query the currently staged current capture file and
     to stage a new capture file into the current directory.
     """
-    def __init__(self, config: WorkAreaConfig):
+    def __init__(self, directories: WorkDirectories):
         self._logger: logging.Logger = logging.getLogger(
             self.__class__.__name__)
-        self._input_directory = config.input_directory
-        self._current_directory = config.current_directory
-        self._output_directory = config.output_directory
+        self._directories = directories
         self._current_file: Optional[CaptureFile] = None
-        current_files = list(self._current_directory.glob("*.pcap"))
+        current_files = list(self._directories.current.glob("*.pcap"))
         if current_files:
             self._current_file = CaptureFile(current_files[0])
+        self._output_file: Optional[Path] = None
 
     def ingest_files(self, files: list[Path]) -> None:
         for src_file in files:
-            dst_file = self._input_directory / src_file.name
+            dst_file = self._directories.input / src_file.name
             shutil.copy2(src_file, dst_file)
             self._logger.debug(f"Copied {src_file} to {dst_file}")
 
@@ -39,6 +38,6 @@ class WorkArea:
         return self._current_file
 
     def set_current_file(self, capture_file: CaptureFile) -> None:
-        dst_file = self._current_directory / str(capture_file.name)
+        dst_file = self._directories.current / str(capture_file.name)
         shutil.copy2(capture_file.path, dst_file)
         self._logger.debug(f"Copied {capture_file.path} to {dst_file}")

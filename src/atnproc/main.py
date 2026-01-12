@@ -34,8 +34,8 @@ from pathlib import Path
 
 import yaml
 
-from atnproc.application import ApplicationLoop
-from atnproc.application_runner import ApplicationRunner
+from atnproc.application import Application
+from atnproc.application_loop import ApplicationLoop
 from atnproc.config import Configuration
 
 
@@ -91,15 +91,15 @@ class MainApp:
         with open("config/logging.yaml", "r", encoding="utf-8") as f:
             logging.config.dictConfig(yaml.safe_load(f))
 
-    def main(self) -> None:
+    def run(self) -> None:
         """Main application entry point"""
         self.configure_logging()
         self.logger = logging.getLogger(__name__)
         exit_status = 0
         try:
             config = Configuration(self.get_config_file_path())
-            runner = ApplicationRunner(config)
-            main_loop = ApplicationLoop(runner)
+            application = Application(config)
+            main_loop = ApplicationLoop(application)
             main_loop.start()
         except KeyboardInterrupt:
             self.log_info("Interrupted by user (KeyboardInterrupt)")
@@ -113,10 +113,9 @@ class MainApp:
             # Log the full traceback for unexpected exceptions and exit with 1.
             self.log_exception("Unexpected exception during run")
             sys.exit(1)
-        else:
-            self.log_info(f"Normal exit with exit code: {exit_status}")
-            sys.exit(exit_status)
+        self.log_info(f"Normal exit with exit code: {exit_status}")
+        sys.exit(exit_status)
 
 
 if __name__ == "__main__":
-    MainApp().main()
+    MainApp().run()

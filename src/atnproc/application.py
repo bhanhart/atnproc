@@ -1,58 +1,60 @@
-"""
-The ApplicationLoop class provides a generic event loop and support for
-graceful shutdown.
+"""Runner implementation for ATN capture processing.
 
-Functionality:
-
-- Constructed with with a `RunnerInterface` instance.
-- Repeatedly calls `runner.run()` to perform work; that method
-    returns a `datetime.timedelta` indicating how long the application should
-    sleep before the next iteration.
-- Uses `InterruptibleSleeper` to sleep in an interruptible manner so shutdown
-    can interrupt the sleep period.
-- Provides `handle_termination_signal(sig_no)` which marks a shutdown request
-    (suitable to be registered as a SIGINT/SIGTERM handler).
-
-The module's responsibility is lifecycle and orchestration of the run loop
-and allows for graceful shutdown of the application.
+Contains `ApplicationRunner` which implements `RunnerInterface` and
+coordinates discovery of recent capture files and staging them into the
+work area for downstream processing.
 """
 
-from datetime import timedelta
 import logging
-import signal
-import threading
-from atnproc.interruptable_sleeper import InterruptibleSleeper
+from datetime import timedelta
+from atnproc.recent_capture_file_loader import RecentCaptureFileLoader
+from atnproc.recent_capture_files import RecentCaptureFiles
 from atnproc.runner_interface import RunnerInterface
+from atnproc.config import Configuration
+from atnproc.work_area import WorkArea
 
 
-class ApplicationLoop:
-    """Generic application run loop.
+class Application(RunnerInterface):
+    """Main application functionality.
 
-    The :class:`ApplicationLoop` repeatedly calls ``runner.run()`` and
-    uses :class:`InterruptibleSleeper` to sleep between iterations while
-    allowing graceful shutdown via signals.
+    Implements `RunnerInterface.run()` to locate the two most recent
+    capture files and stage the appropriate file into the work area for
+    downstream processing.
     """
 
-    def __init__(self, runner: RunnerInterface) -> None:
-        self._logger: logging.Logger = logging.getLogger(
-            self.__class__.__name__)
-        self._runner = runner
-        self._shutdown_requested: threading.Event = threading.Event()
-        self._logger.info("Application initialized")
+    def __init__(self, config: Configuration) -> None:
+        self._config: Configuration = config
+        self._logger: logging.Logger = logging.getLogger(self.__class__.__name__)
+        self._work_area = WorkArea(config.work_directories)
 
-    def start(self) -> None:
-        self._logger.info("Application running")
-        sleeper = InterruptibleSleeper(self)
-        while not self._shutdown_requested.is_set():
-            self._logger.debug("Run loop iteration starting...")
-            sleep_duration: timedelta = self._runner.run()
-            self._logger.debug("Run loop iteration finished")
-            self._logger.debug(f"Sleeping for {sleep_duration.total_seconds()} seconds...")
-            sleeper.sleep(sleep_duration)
-        self._logger.info("Shutdown requested, exiting application")
-        sleeper.close()
+    def run(self) -> timedelta:
+        file_loader = RecentCaptureFileLoader(self._config.capture_directories)
+        capture_files = RecentCaptureFiles(file_loader.files)
+        self._work_area.ingest_files(capture_files.files)
+        if capture_files.latest:
+            current_capture_file = self._work_area.get_current_capture_file()
+            if not current_capture_file:
+                self._logger.info(
+                    f"No current capture file, processing: {capture_files.latest}"
+                )
+                self._work_area.set_current_file(capture_files.latest)
+            else:
+                self._logger.info(f"Found current capture file: {current_capture_file}")
+                if current_capture_file.name == capture_files.latest.name:
+                    self._logger.info(
+                        f"Processing latest capture file: {current_capture_file}"
+                    )
+                else:
+                    if capture_files.previous:
+                        if current_capture_file == capture_files.previous:
+                            self._logger.info(
+                                f"Processing previous capture file: {capture_files.previous}")
+                            self._logger.info(
+                                f"Processing latest capture file: {capture_files.latest}")
+                            self._work_area.set_current_file(capture_files.latest)
+                    else:
+                        self._logger.info(
+                            f"Processing new capture file: {capture_files.latest}")
+                        self._work_area.set_current_file(capture_files.latest)
 
-    def handle_termination_signal(self, sig_no: int) -> None:
-        sig_name = signal.Signals(sig_no).name
-        self._logger.info(f"Shutdown request (signal={sig_name})")
-        self._shutdown_requested.set()
+        return timedelta(seconds=self._config.processing_interval_seconds)

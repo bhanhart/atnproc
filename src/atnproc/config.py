@@ -11,29 +11,29 @@ import yaml
 
 
 
-class WorkAreaConfig:
-    """Configured filesystem paths for work area directories."""
+class WorkDirectories:
+    """Filesystem paths for work area directories."""
 
-    _input_directory: Path
-    _current_directory: Path
-    _output_directory: Path
+    _input: Path
+    _current: Path
+    _output: Path
 
     def __init__(self, input_directory: Path, current_directory: Path, output_directory: Path):
-        self._input_directory = input_directory
-        self._current_directory = current_directory
-        self._output_directory = output_directory
+        self._input = input_directory
+        self._current = current_directory
+        self._output = output_directory
 
     @property
-    def input_directory(self) -> Path:
-        return self._input_directory
+    def input(self) -> Path:
+        return self._input
 
     @property
-    def current_directory(self) -> Path:
-        return self._current_directory
+    def current(self) -> Path:
+        return self._current
 
     @property
-    def output_directory(self) -> Path:
-        return self._output_directory
+    def output(self) -> Path:
+        return self._output
 
 
 class Configuration:
@@ -43,7 +43,7 @@ class Configuration:
     YAML configuration file and exposes them as `pathlib.Path` properties.
     """
     _capture_directories: list[Path]
-    _work_area: WorkAreaConfig
+    _work_directories: WorkDirectories
     _processing_interval_seconds: int
 
     def __init__(self, config_file: Path):
@@ -53,7 +53,7 @@ class Configuration:
         capture_dirs = config["capture_directories"]
         self._capture_directories = [Path(d) for d in capture_dirs]
         work_dirs = config["work_directories"]
-        self._work_area = WorkAreaConfig(
+        self._work_directories = WorkDirectories(
             input_directory=Path(work_dirs["input_directory"]),
             current_directory=Path(work_dirs["current_directory"]),
             output_directory=Path(work_dirs["output_directory"])
@@ -68,5 +68,5 @@ class Configuration:
         return self._capture_directories
 
     @property
-    def work_area(self) -> WorkAreaConfig:
-        return self._work_area
+    def work_directories(self) -> WorkDirectories:
+        return self._work_directories
