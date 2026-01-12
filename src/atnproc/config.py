@@ -45,11 +45,13 @@ class Configuration:
     _capture_directories: list[Path]
     _work_directories: WorkDirectories
     _processing_interval_seconds: int
+    _filter_ip: str
 
     def __init__(self, config_file: Path):
         with open(config_file, encoding="utf-8") as f:
             config: Any = yaml.safe_load(f)
         self._processing_interval_seconds = config["processing_interval_seconds"]
+        self._filter_ip = config["filter_ip"]
         capture_dirs = config["capture_directories"]
         self._capture_directories = [Path(d) for d in capture_dirs]
         work_dirs = config["work_directories"]
@@ -62,6 +64,10 @@ class Configuration:
     @property
     def processing_interval_seconds(self) -> int:
         return self._processing_interval_seconds
+
+    @property
+    def filter_ip(self) -> str:
+        return self._filter_ip
 
     @property
     def capture_directories(self) -> list[Path]:

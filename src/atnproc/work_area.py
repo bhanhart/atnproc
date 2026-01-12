@@ -26,7 +26,6 @@ class WorkArea:
         current_files = list(self._directories.current.glob("*.pcap"))
         if current_files:
             self._current_file = CaptureFile(current_files[0])
-        self._output_file: Optional[Path] = None
 
     def ingest_files(self, files: list[Path]) -> None:
         for src_file in files:

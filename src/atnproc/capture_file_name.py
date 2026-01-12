@@ -54,6 +54,14 @@ class CaptureFileName:
         """Returns the name of the file (stem)."""
         return self._file_name
 
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, CaptureFileName):
+            return NotImplemented
+        return self._file_name == other._file_name
+
+    def __hash__(self) -> int:
+        return hash(self._file_name)
+
     def __str__(self) -> str:
         """Return the original filename for human-readable representations."""
         return self._file_name
