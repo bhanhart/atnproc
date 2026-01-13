@@ -53,25 +53,44 @@ class PacketProcessor:
             # We use 'w' to overwrite, ensuring re-processing growing files
             # doesn't result in duplicate logs.
             with open(output_file, "w", encoding="utf-8") as out_f:
-                # Pipe: tcpdump | awk > output_file
+                # Pipe: tcpdump | awk > output_file.
+                # Using 'with' for Popen ensures that the child processes are
+                # waited for, preventing zombies in case of errors.
                 tcpdump_proc = subprocess.Popen(
                     tcpdump_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
                 )
-                awk_proc = subprocess.Popen(
-                    awk_cmd, stdin=tcpdump_proc.stdout, stdout=out_f, stderr=subprocess.PIPE
-                )
+                with tcpdump_proc:
+                    if tcpdump_proc.stdout is None:
+                        # This should not happen with stdout=PIPE, but check for safety.
+                        _, tcpdump_err = tcpdump_proc.communicate()
+                        if tcpdump_proc.returncode != 0:
+                            self._logger.error(
+                                "tcpdump failed to create pipe: %s",
+                                tcpdump_err.decode().strip(),
+                            )
+                        return
 
-                # Allow tcpdump to receive SIGPIPE if awk exits
-                if tcpdump_proc.stdout:
-                    tcpdump_proc.stdout.close()
+                    awk_proc = subprocess.Popen(
+                        awk_cmd,
+                        stdin=tcpdump_proc.stdout,
+                        stdout=out_f,
+                        stderr=subprocess.PIPE,
+                    )
+                    with awk_proc:
+                        # Allow tcpdump to receive SIGPIPE if awk exits.
+                        tcpdump_proc.stdout.close()
+                        _, awk_err = awk_proc.communicate()
 
-                _, awk_err = awk_proc.communicate()
-                _, tcpdump_err = tcpdump_proc.communicate()
+                    # We can't use communicate() on tcpdump_proc as its stdout was
+                    # passed to another process and then closed. We read stderr
+                    # directly and the 'with' block will wait for the process.
+                    tcpdump_err = tcpdump_proc.stderr.read() if tcpdump_proc.stderr else b""
 
-                if awk_proc.returncode != 0:
-                    self._logger.error(f"awk error: {awk_err.decode().strip()}")
+                    if awk_proc.returncode != 0:
+                        self._logger.error("awk error: %s", awk_err.decode().strip())
+
                 if tcpdump_proc.returncode != 0:
-                    self._logger.error(f"tcpdump error: {tcpdump_err.decode().strip()}")
+                    self._logger.error("tcpdump error: %s", tcpdump_err.decode().strip())
 
         except Exception as e:  # pylint: disable=broad-exception-caught
             self._logger.exception("Failed to process %s: %s", capture_file, e)
