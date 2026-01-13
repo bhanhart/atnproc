@@ -10,7 +10,6 @@ wheels/
 .venv
 venv
 
-airtel
 example
 unused
 *.log

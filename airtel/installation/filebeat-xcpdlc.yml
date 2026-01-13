@@ -1,0 +1,51 @@
+#================================ Registry =====================================
+filebeat.registry:
+    path: xcpdlc
+#============================= Filebeat modules ===============================
+filebeat.config:
+    modules:
+      path: /etc/filebeat/modules.d/*.yml
+      reload.enabled: false
+#=========================== Filebeat inputs =============================  
+filebeat.inputs:
+  - type: log
+    enabled: true
+    name: ${XCPDLC_NAME}
+    fields: {Origin: "${XCPDLC_ORIGIN}"}
+    fields_under_root: true    
+    paths: ["${XCPDLC_DIR}/${XCPDLC_PATTERN}"]
+    ignore_older: ${XCPDLC_IGNORE_OLDER}
+    multiline.match: after
+    multiline.negate: true
+    multiline.pattern: ^[0-9]{1,2}\/[0-9]{1,2}\/[0-9]{4}
+    multiline.max_lines: 2000
+    clean_removed: true
+    close_inactive: 2s
+    scan_frequency: 2s
+    scan.sort: filename
+    scan.order: asc
+    harvester_limit: 1
+#============================= Filebeat output ===============================
+output.logstash:
+    enabled: true
+    worker: 1
+    loadbalance: ${XCPDLC_LOADBALANCE}
+    hosts: '${XCPDLC_HOSTS}'
+    proxy_url: ${XCPDLC_PROXYURL}
+    ssl.enabled: true
+    ssl.verification_mode: full 
+    ssl.certificate_authorities: '${SSL_CERTIFICATE_AUTHORITIES}'
+#================================ General =====================================
+path:
+  config: /etc/filebeat
+  data: /var/lib/filebeat
+  home: /usr/share/filebeat
+  logs: /var/log/filebeat
+#================================ Processors =====================================
+processors:
+ - drop_fields:
+     fields: ["input","beat","log","host","prospector","agent"]
+#============================== Kibana =====================================
+setup:
+  kibana: null
+
