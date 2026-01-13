@@ -5,6 +5,7 @@
 The project is written in Python.
 Use Python version >= 3.9.
 Always use proper typing annotations.
+Always make sure a Python file has a final newline at the end of the file.
 
 ## GIT Version Control
 
