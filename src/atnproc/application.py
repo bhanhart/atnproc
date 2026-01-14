@@ -6,7 +6,6 @@ work area for downstream processing.
 """
 
 import logging
-from pathlib import Path
 from datetime import timedelta
 from atnproc.recent_capture_file_loader import RecentCaptureFileLoader
 from atnproc.recent_capture_files import RecentCaptureFiles
@@ -30,7 +29,7 @@ class Application(RunnerInterface):
         self._work_area = WorkArea(config.work_directories)
         self._processor = PacketProcessor(
             filter_ip=config.filter_ip,
-            awk_script=Path(__file__).parent / "rtcd_routerlog.awk",
+            awk_script=config.awk_script,
         )
 
     def run(self) -> timedelta:

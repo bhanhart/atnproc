@@ -1,4 +1,6 @@
 processing_interval_seconds: 60
+filter_ip: ""
+awk_script: src/atnproc/rtcd_routerlog.awk
 capture_directories:
   - /mnt/logs/archiver/atnr01-tds-fep/captures
   - /mnt/logs/archiver/atnr02-tds-fep/captures
