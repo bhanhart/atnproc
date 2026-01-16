@@ -19,7 +19,7 @@ class WorkDirectories:
     _processed: Path
     _output: Path
 
-    def __init__(self, input: Path, current: Path, processed: Path, output: Path):
+    def __init__(self, input: Path, current: Path, processed: Path, output: Path):  # pylint: disable=W0622
         self._input = input
         self._current = current
         self._processed = processed
