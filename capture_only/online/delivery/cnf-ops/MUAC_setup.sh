@@ -45,12 +45,10 @@
 # Mandatory parameters:
 IP1_addr="10.150.112.142"
 IP1_nic="net3:0"
-IP1_label="Virtual IP-1"
 IP1_mask="29"
 
 IP2_addr="192.168.54.8"
 IP2_nic="net2:0"
-IP2_label="Virtual IP-2"
 IP2_mask="28"
 
 # Optional parameters (route creation)
@@ -104,9 +102,9 @@ SNMP_HOST_AGENT_IS_USED="NO"
 
 # ----------- END CUSTOM SECTION ------------
 
-function E() {
-echo $@
-$@
+function E {
+echo "$@"
+"$@"
 }
 
 # Switch all nodes to standby
@@ -140,7 +138,7 @@ fi
 if [ "${ETH_DEVICES}" != "" ]
 then
 # Configure eth device clone service
-E pcs resource create pr-eth ocf:r2ms:CMN_ethDevices monitored_devices=${ETH_DEVICES} op monitor interval=13s
+E pcs resource create pr-eth ocf:r2ms:CMN_ethDevices monitored_devices="${ETH_DEVICES}" op monitor interval=13s
 E pcs resource clone pr-eth
 fi
 
@@ -174,6 +172,7 @@ E pcs resource create pr-atn_lan_capture systemd:atn_lan_capture op monitor inte
 # to prevent that ll_stack is moved in case of failure
 E pcs resource meta pr-atn_lan_capture restart-type=restart failure-timeout=30s resource-stickiness=100
 # Start ATN capture before gr-ProATN but don't block gr-ProATN startup if it fails
+# shellcheck disable=SC1010
 E pcs constraint order start pr-atn_lan_capture then start pr-ll_stack kind=Optional require-all=false
 # Attempt to colocate ATN capture without causing gr-ProATN to move or restart on failure
 E pcs constraint colocation add pr-atn_lan_capture with gr-ProATN 200

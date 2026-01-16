@@ -15,13 +15,23 @@ fi
 
 echo "Using python: $PY"
 
-# Find Python files excluding venv folders and .git
-mapfile -t FILES < <(find "$ROOT_DIR" \
-  -path "$ROOT_DIR/.venv" -prune -o \
-  -path "$ROOT_DIR/venv" -prune -o \
-  -path "$ROOT_DIR/.git" -prune -o \
-  -path "$ROOT_DIR/unused" -prune -o \
-  -name '*.py' -print)
+# Directories (relative to ROOT_DIR) to ignore when searching for files
+IGNORE_DIRS=(
+  .venv
+  venv
+  .git
+  tools
+  unused
+)
+
+# Build find prune args from IGNORE_DIRS
+FIND_PRUNES=()
+for d in "${IGNORE_DIRS[@]}"; do
+  FIND_PRUNES+=( -path "$ROOT_DIR/$d" -prune -o )
+done
+
+# Find Python files excluding the ignore dirs
+mapfile -t FILES < <(find "$ROOT_DIR" "${FIND_PRUNES[@]}" -name '*.py' -print)
 
 if [ ${#FILES[@]} -eq 0 ]; then
   echo "No Python files found to lint."

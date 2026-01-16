@@ -1,0 +1,30 @@
+name: Shell Script Checks
+
+on:
+  push:
+    paths:
+      - '**/*.sh'
+      - '.github/workflows/**'
+  pull_request:
+    paths:
+      - '**/*.sh'
+      - '.github/workflows/**'
+
+jobs:
+  shell-check:
+    name: Check shell scripts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+
+      - name: Run shell syntax & ShellCheck
+        env:
+          SHELLCHECK_STRICT: 1
+        run: |
+          bash scripts/bash_shellcheck.sh
