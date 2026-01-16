@@ -16,12 +16,14 @@ class WorkDirectories:
 
     _input: Path
     _current: Path
+    _processed: Path
     _output: Path
 
-    def __init__(self, input_directory: Path, current_directory: Path, output_directory: Path):
-        self._input = input_directory
-        self._current = current_directory
-        self._output = output_directory
+    def __init__(self, input: Path, current: Path, processed: Path, output: Path):
+        self._input = input
+        self._current = current
+        self._processed = processed
+        self._output = output
 
     @property
     def input(self) -> Path:
@@ -30,6 +32,10 @@ class WorkDirectories:
     @property
     def current(self) -> Path:
         return self._current
+
+    @property
+    def processed(self) -> Path:
+        return self._processed
 
     @property
     def output(self) -> Path:
@@ -58,9 +64,10 @@ class Configuration:
         self._capture_directories = [Path(d) for d in capture_dirs]
         work_dirs = config["work_directories"]
         self._work_directories = WorkDirectories(
-            input_directory=Path(work_dirs["input_directory"]),
-            current_directory=Path(work_dirs["current_directory"]),
-            output_directory=Path(work_dirs["output_directory"])
+            input=Path(work_dirs["input"]),
+            current=Path(work_dirs["current"]),
+            processed=Path(work_dirs["processed"]),
+            output=Path(work_dirs["output"])
         )
 
     @property

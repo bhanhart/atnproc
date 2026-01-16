@@ -2,118 +2,128 @@
 
 ## 1. Overview
 
-The ATN Network Capture Processor (ANCP) is a standalone application designed to automate the processing of network traffic captures from ATN (Aeronautical Telecommunication Network) routers.
+The ATN Network Capture Processor (ANCP) is a standalone application that automates the processing of network traffic captures from ATN (Aeronautical Telecommunication Network) routers. It monitors specified directories for incoming `.pcap` files, extracts ATN network packets matching a configurable IP address, and transforms them into line-delimited text format suitable for ingestion by data analysis platforms like Elasticsearch Filebeat.
 
-The primary function of the ANCP is to monitor specified directories for incoming `.pcap` files, extract relevant ATN network packets based on a specific IP address, and transform these packets into a line-delimited text format. These output files are intended for ingestion by data shippers like Elasticsearch Filebeat, facilitating near real-time analysis and monitoring of ATN communications.
-
-The system is designed to handle capture files that are continuously transferred via `rsync` from remote hosts, meaning the most recent file may be incomplete and growing.
+The system handles capture files continuously transferred via `rsync` from remote hosts, where files may be incomplete and growing during processing.
 
 ## 2. Goals
 
-- **Automate Processing**: To fully automate the extraction and transformation of ATN network traffic from raw PCAP files.
-- **Ensure Data Integrity**: To implement a processing strategy that guarantees all packets from a capture file are processed, even when files are being actively written to.
-- **Timely Data Availability**: To make processed data available for analysis within a short, predictable timeframe.
-- **Create a Data Pipeline**: To serve as a reliable data source for an external log analysis and monitoring platform (e.g., the ELK Stack).
+- **Automate Processing**: Fully automate extraction and transformation of ATN network traffic from raw PCAP files.
+- **Ensure Data Integrity**: Guarantee all packets from a capture file are processed, even when files are actively being written to.
+- **Timely Data Availability**: Make processed data available for analysis within a short, predictable timeframe.
+- **Enable Data Pipeline**: Serve as a reliable data source for external log analysis and monitoring platforms (e.g., ELK Stack).
 
 ## 3. Functional Requirements
 
 | ID | Requirement |
 | --- | --- |
-| FR-1 | **File Selection**: The application shall scan for files with a `.pcap` extension. |
-| FR-2 | **File Filtering**: The application shall filter files based on the date timestamp encoded in the filename. |
-| FR-3 | **Packet Filtering**: The application shall extract network packets from capture files that are related to a specific, configurable IP address and ATN protocol. |
-| FR-4 | **Data Transformation**: The application shall convert each extracted ATN packet into a single-line text record. |
-| FR-5 | **Output Generation**: The application shall write the transformed text records to output files in a designated directory, ready for consumption by Filebeat. |
-| FR-6 | **Handling of Growing Files**: The application must correctly process capture files that may be growing in size due to an ongoing `rsync` transfer. |
-| FR-7 | **Sequential Processing**: When a new capture file is detected, the application must first ensure the *previous* capture file has been fully processed before starting the new one. |
+| FR-1 | **File Selection**: Scan for files with a `.pcap` extension. |
+| FR-2 | **File Filtering**: Filter files based on the date timestamp encoded in the filename. |
+| FR-3 | **Packet Filtering**: Extract network packets matching a specific, configurable IP address and ATN protocol. |
+| FR-4 | **Data Transformation**: Convert each extracted ATN packet into a single-line text record. |
+| FR-5 | **Output Generation**: Write transformed text records to a `processed` output file in a designated work directory. |
+| FR-6 | **Incremental Updates**: Compare new `processed` files with previous output and append only new records to the final output file. |
+| FR-7 | **Handle Growing Files**: Correctly process capture files that may be growing due to ongoing `rsync` transfers. |
+| FR-8 | **Sequential Processing**: Fully process the previous capture file before processing a new one. |
 
 ## 4. Non-Functional Requirements
 
 | ID | Requirement |
 | --- | --- |
-| NFR-1 | **Platform**: The application shall be a stand-alone Python application, compatible with Python version 3.9 or newer. |
-| NFR-2 | **Performance**: The application shall detect new or updated capture files within a maximum of one minute from their arrival in the source directories. |
-| NFR-3 | **Configuration**: All key operational parameters (e.g., source/work directories, filter IP address) shall be configurable via a single configuration file in YAML format. |
-| NFR-4 | **Reliability**: The application shall run continuously as a service and handle graceful shutdowns upon receiving `SIGINT` or `SIGTERM` signals. |
-| NFR-5 | **Logging**: The application must provide comprehensive logging to both the console and a rotating log file for operational monitoring and debugging purposes. |
+| NFR-1 | **Platform**: Standalone Python application compatible with Python 3.9 or newer. |
+| NFR-2 | **Performance**: Detect new or updated capture files within one minute of arrival. |
+| NFR-3 | **Configuration**: All operational parameters (source/work directories, filter IP address) configurable via a single YAML configuration file. |
+| NFR-4 | **Reliability**: Run continuously as a service with graceful shutdown on `SIGINT` or `SIGTERM` signals. |
+| NFR-5 | **Logging**: Provide comprehensive logging to console and rotating log files for operational monitoring and debugging. |
 
 ## 5. File Naming and Selection
 
 ### 5.1. Filename Format
 
-The network capture filenames are expected to follow this format:
-`
+Capture filenames follow this format:
+
+```text
 <host>_<interface>_<count>_<date><time>.pcap
-`
+```
 
-- **prefix**: Identifier for the source router, e.g., `atnr01` or `atnr02`.
-- **interface**: Network interface, e.g., `net3`.
-- **count**: An integer counter, formatted with leading zeros (e.g., `%05d`).
-- **date**: The date of the capture start time, in `YYYYMMDD` format.
-- **time**: The time of the capture start time, in `HHMMSS` format.
+- **host**: Source router identifier (e.g., `atnr01`, `atnr02`)
+- **interface**: Network interface (e.g., `net3`)
+- **count**: Integer counter with leading zeros (e.g., `00001`)
+- **date**: Capture start date in `YYYYMMDD` format
+- **time**: Capture start time in `HHMMSS` format
 
-The timestamp (`<date><time>`) is used to determine the chronological order of the files.
+The timestamp (`<date><time>`) determines chronological file order.
 
 ### 5.2. File Selection Logic
 
-To determine which files to process, the application shall:
+The application identifies files to process as follows:
 
-1. Scan the source directories for files matching today's date (`*_<YYYYMMDD>*.pcap`).
-2. If fewer than two files are found for the current day, the application shall also scan for files from the previous day.
-3. From the collected list, the two most recent files (based on the filename timestamp) are considered the `latest` and `previous` files for the processing cycle.
+1. Scan source directories for files matching today's date (`*_<YYYYMMDD>*.pcap`)
+2. If fewer than two files are found, also scan the previous day
+3. Select the two most recent files as `latest` and `previous` based on filename timestamp
 
 ## 6. Processing Strategy
 
-### 6.1 Capture File Scanning and Processing
+### 6.1. File Processing Pipeline
 
-To handle growing files and ensure no data is missed, the application will use a working (input) directory and a stateful processing loop. The guiding principle is that older files must be fully processed before newer files.
+The application uses a working directory structure and stateful loop to handle growing files and ensure no data is missed. Older files are fully processed before newer ones.
 
-1. **Identify Candidates**: In each cycle, identify the two most recent capture files from the source directories (referred to as `latest` and `previous`).
-2. **Copy to Work Area**: To prevent issues with `rsync` changing a file during processing, copy the candidate files to a local working (input) directory for processing.
-3. **State Management**: Maintain the concept of a "current" file, which is the file currently being processed. This file's state is tracked by its presence in a dedicated "current" directory.
-4. **Initial Run**: If no "current" file exists:
-    - If a `previous` file is identified, it is processed first.
-    - The `latest` file is then processed and staged as the new "current" file.
-5. **Steady State Operation**: On subsequent runs:
-    - **New File Detected**: If the `latest` file from the source is newer than the "current" file, the "current" file (which now corresponds to the `previous` file) is re-processed one last time to ensure it is complete. Afterwards, the new `latest` file is processed and staged as the new "current" file.
-    - **Existing File Updated**: If the `latest` file from the source is the same as the "current" file, check if its size has increased. If so, re-process it to capture the new data.
+**Processing Steps:**
+
+1. **Identify Candidates**: Find the two most recent capture files (`latest` and `previous`)
+2. **Copy to Work Area**: Copy candidate files to an `input` directory to prevent conflicts with ongoing `rsync` transfers
+3. **Maintain State**: Track three file concepts:
+   - `current`: The pcap file currently being processed (stored in `current` directory)
+   - `processed`: The output file generated from processing (stored in `processed` directory)
+   - `output`: The final aggregated output file (stored in `output` directory)
+
+4. **Initial Run**: If no `current` file exists:
+   - Process the `previous` file first
+   - Process the `latest` file and mark it as `current`
+
+5. **Steady State**: On subsequent runs:
+   - **New File Detected**: If `latest` is newer than `current`, re-process `current` (now the old file) once more for completeness, then process and mark `latest` as new `current`
+   - **File Growing**: If `latest` equals `current` but has increased in size, re-process it to capture new data
 
 ### 6.2. Packet Extraction and Transformation
 
-The core packet processing step (referenced above as "processed") involves using the `tcpdump` command-line utility and an awk conversion script, to filter and transform the data to conform to the desired output format.
+The application uses `tcpdump` and an awk script to filter and transform packets into line-delimited format.
 
-For each capture file designated for processing:
+**For each capture file:**
 
-1. The `tcpdump` program shall be executed on the `.pcap` file located in the current directory of the working area.
-2. The `tcpdump` command shall use the following arguments:
+1. Execute `tcpdump` on the `.pcap` file with the following options:
+   - `-n`: Do not resolve hostnames
+   - `-e`: Output link-level headers
+   - `-x`: Output packet data in hex
+   - `-tttt`: Output detailed timestamp with sub-second precision
+   - Filter: `ip host <configured_ip> and proto 80` (ISO-on-TCP)
 
-   - Do not convert host addresses to names (`-n`).
-   - Output the link level header on each line (`-e`)
-   - Output the data of each packet in hex (`-x`).
-   - Output a detailed timestamp including fractions of a second (`-tttt`).
-   - Filter packets based on:
-      - A configurable host IP address (`ip host <ip_address>)
-      - The ISO-on-TCP protocol with number 80 (`proto 80`).
+   Example: `/usr/sbin/tcpdump -r atnr01_net3_00001_20251229154959.pcap -n -e -x -tttt -l ip host 156.135.249.28 and proto 80`
 
-3. An example invocation of the 'tcpdump' command would be: `/usr/sbin/tcpdump -r atnr01_net3_00001_20251229154959.pcap -n -e -x -tttt -l ip host 156.135.249.28 and proto 80`
-4. The `tcpdump` generates a multi-line output for each packet that is then piped to an awk conversion script (`rtcd_routerlog.awk`) for transformation into a single-line format.
-5. The `rtcd_routerlog.awk` script generates the following, space delimited, single line of output for each packet:
+2. Pipe output to `rtcd_routerlog.awk` which transforms multi-line packet data into single-line records:
+   - `ROUTER CLNS_DT_PDU` (literal string)
+   - Timestamp from tcpdump header
+   - Direction: `SENT` (source IP matches monitored IP) or `RCVD`
+   - ATN PDU length (IP packet payload)
+   - Remote IP address
+   - Raw ATN (CLNP) PDU as hex string (IPv4 header removed)
 
-   - The literal string `ROUTER CLNS_DT_PDU`.
-   - The timestamp from the `tcpdump` header.
-   - The direction of the packet: `SENT` if the source IP matches the monitored IP, `RCVD` otherwise.
-   - The length of the ATN PDU (the payload of the IP packet).
-   - The remote IP address (the other party in the communication).
-   - The raw ATN (CLNP) PDU as a continuous hex string (with the 20-byte IPv4 header removed).
+3. Write records to a temporary file
+4. If no previous `processed` file exists, copy temporary file to the `processed` directory; otherwise, diff and append only new records to the output file
 
-6. The single-line records are written to a temporary file.
-7. A diff shall be performed between the existing output file in the output directory and the temporary file.
-8. Any newly added records shall be appended to the output file.
+### 6.3. Working Directories
+
+The application uses the following configurable working directories:
+
+- **input**: Stores identified latest and previous pcap files
+- **current**: Stores the latest processed pcap file
+- **processed**: Contains the output file from processing the latest pcap
+- **output**: Contains the final aggregated output file
 
 ## 7. Assumptions
 
-- The `rsync` interval from the ATN routers is frequent enough (e.g., every minute) that considering only the two most recent capture files is sufficient to avoid data gaps.
-- The source directories are mounted and accessible to the application with read permissions.
-- The working directories are on a local filesystem with read/write permissions.
-- The `.pcap` files are well-formed and not corrupt.
-- The `tcpdump` command-line utility is installed on the system and is available in the application's execution `PATH`.
+- The `rsync` interval from ATN routers is frequent enough (e.g., every minute) that tracking the two most recent files is sufficient to prevent data gaps
+- Source directories are mounted and accessible with read permissions
+- Working directories are on local filesystems with read/write permissions
+- `.pcap` files are well-formed and not corrupt
+- `tcpdump` is installed and available in the execution environment

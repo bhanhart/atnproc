@@ -5,6 +5,7 @@ capture_directories:
   - /mnt/logs/archiver/atnr01-tds-fep/captures
   - /mnt/logs/archiver/atnr02-tds-fep/captures
 work_directories:
-  input_directory: /var/tmp/alcp/input
-  current_directory: /var/tmp/alcp/current
-  output_directory: /var/tmp/alcp/output
+  input: /var/tmp/alcp/input
+  current: /var/tmp/alcp/current
+  processed: /var/tmp/alcp/processed
+  output: /var/tmp/alcp/output
