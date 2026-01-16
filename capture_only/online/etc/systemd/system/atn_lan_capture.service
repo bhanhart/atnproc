@@ -1,0 +1,20 @@
+[Unit]
+Description=Capture ATN traffic
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+# Optional file with environment variables used in the Bash scripts
+EnvironmentFile=-/etc/sysconfig/atn_lan_capture.env
+
+# Run cleanup if present but do not fail service start when the cleanup fails
+ExecStartPre=-/opt/muac/atn_lan_capture_cleanup.sh
+ExecStart=/opt/muac/atn_lan_capture.sh
+Type=simple
+KillMode=control-group
+TimeoutStopSec=5
+# Lifecycle managed by Pacemaker
+Restart=no
+
+[Install]
+WantedBy=multi-user.target
