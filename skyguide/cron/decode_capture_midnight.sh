@@ -10,7 +10,7 @@
 #
 
 # Protocol decoder
-PDEC_VER=C4p5
+PDEC_VER=C5p2
 OS_VER=RHEL8
 PDEC_DIR=/usr/PDEC/Airtel_PDEC_EXE_${PDEC_VER}_${OS_VER}
 PDEC_CLNP=${PDEC_DIR}/bin/pdec_clnp
@@ -45,7 +45,7 @@ for file in pdus*.csv; do
 done
 
 # Run pdec on full live capture
-${PDEC_CLNP} -s ${PDEC_DB} -i ${LOGFILE} --csv >/dev/null
+${PDEC_CLNP} -s ${PDEC_DB} -i ${LOGFILE} --csv --notxt --quiet --nointermediate >/dev/null
 RETVAL=$?
 if [ ${RETVAL} -eq 0 ] ; then
     # Process all pdus CSV files if any
@@ -72,7 +72,7 @@ if [ ${RETVAL} -eq 0 ] ; then
                 fi
                
                 # Cleanup temporary files
-                rm diff.out ${file}.old pdus.txt
+                rm diff.out ${file}.old
             else
                 # Count number of lines
                 var=$(wc -l ${file} | awk '{print $1}')

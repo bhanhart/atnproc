@@ -10,7 +10,7 @@
 #
 
 # Protocol decoder
-PDEC_VER=C4p5
+PDEC_VER=C5p2
 OS_VER=RHEL8
 PDEC_DIR=/usr/PDEC/Airtel_PDEC_EXE_${PDEC_VER}_${OS_VER}
 PDEC_CLNP=${PDEC_DIR}/bin/pdec_clnp

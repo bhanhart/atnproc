@@ -1,0 +1,14 @@
+# Start capture on reboot after 1 minute delay to allow network interfaces to come up
+@reboot sleep 60 && PLM_SNIFFED_ADDRESS=156.135.249.28 PLM_SNIFFED_INTERFACE=net3 /usr/PDEC/livemonitoring/cron/start_capture.sh
+
+# Re-starting capture at midnight
+0 0 * * * PLM_SNIFFED_ADDRESS=156.135.249.28 PLM_SNIFFED_INTERFACE=net3 /usr/PDEC/livemonitoring/cron/start_capture.sh
+
+# Decode yesterday's capture at midnight
+0 0 * * * /usr/PDEC/livemonitoring/cron/decode_capture_midnight.sh
+
+# Decode captures every minute from 00:01 to 00:59
+1-59 0 * * * /usr/PDEC/livemonitoring/cron/decode_capture_inc_yesterday.sh
+
+# Decode captures every minute from 01:00 to 23:59
+* 1-23 * * * /usr/PDEC/livemonitoring/cron/decode_capture.sh
