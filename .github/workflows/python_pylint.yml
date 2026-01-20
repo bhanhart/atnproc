@@ -25,5 +25,4 @@ jobs:
 
       - name: Run linter script
         run: |
-          chmod +x ./scripts/lint.sh
-          ./scripts/python_pylint.sh
+          bash scripts/python_pylint.sh

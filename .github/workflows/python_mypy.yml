@@ -25,4 +25,4 @@ jobs:
 
       - name: Run mypy script
         run: |
-          ./scripts/python_mypy.sh
+          bash scripts/python_mypy.sh
