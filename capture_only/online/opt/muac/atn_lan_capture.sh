@@ -5,6 +5,8 @@ set -o nounset
 
 : "${NETWORK_INTERFACE:=net3}"
 : "${ARCHIVE_DIR:=/archives/captures}"
+: "${CAPTURE_FILE_DURATION_SECS:=3600}"
+: "${CAPTURE_NUM_CAPTURE_FILES:=72}"
 
 declare STOP_REQUESTED=0
 
@@ -91,8 +93,8 @@ function main
 -i "${NETWORK_INTERFACE}" \
 -p \
 -f 'not stp and not ether multicast and not ip multicast' \
--b files:72 \
--b duration:3600 \
+-b duration:"${CAPTURE_FILE_DURATION_SECS}" \
+-b files:"${CAPTURE_NUM_CAPTURE_FILES}" \
 -P \
 -q \
 -w "${capture_file}" &

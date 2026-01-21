@@ -62,7 +62,8 @@ function main
     # Files are separated by a NUL character due to the "-print0" option of the
     # find command. Therefore, also set the separator to NUL using the -d ''
     # option of the read command
-    while IFS= read -r -d '' file; do
+    while IFS= read -r -d '' file
+    do
         # Just to be on the safe side, check whether the file is open
         if lsof -- "$file" >/dev/null 2>&1
         then
