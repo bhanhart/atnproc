@@ -167,15 +167,15 @@ E pcs resource group add gr-ProATN pr-IP1 pr-IP2 pr-ll_stack pr-ll_agent
 #
 # MUAC additions for capturing of ATN traffic
 #
-E pcs resource create pr-atn_lan_capture systemd:atn_lan_capture op monitor interval=60
+E pcs resource create pr-atn_capture systemd:atn_capture op monitor interval=60
 # Prefer restarting on the current node and set failure-timeout < monitor-interval
 # to prevent that ll_stack is moved in case of failure
-E pcs resource meta pr-atn_lan_capture restart-type=restart failure-timeout=30s resource-stickiness=100
+E pcs resource meta pr-atn_capture restart-type=restart failure-timeout=30s resource-stickiness=100
 # Start ATN capture before gr-ProATN but don't block gr-ProATN startup if it fails
 # shellcheck disable=SC1010
-E pcs constraint order start pr-atn_lan_capture then start pr-ll_stack kind=Optional require-all=false
+E pcs constraint order start pr-atn_capture then start pr-ll_stack kind=Optional require-all=false
 # Attempt to colocate ATN capture without causing gr-ProATN to move or restart on failure
-E pcs constraint colocation add pr-atn_lan_capture with gr-ProATN 200
+E pcs constraint colocation add pr-atn_capture with gr-ProATN 200
 else
 E pcs resource group add gr-ProATN pr-IP1 pr-IP2 pr-ll_stack
 fi
