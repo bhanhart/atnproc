@@ -1,0 +1,18 @@
+[Unit]
+Description=ATN network capture and conversion to Airtel Router format
+After=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+EnvironmentFile=/etc/sysconfig/atn_capture_convert.env
+
+# Run cleanup before starting; tolerate failures so service start is not blocked
+ExecStartPre=-/opt/muac/atn_capture_convert_cleanup.sh
+ExecStart=/opt/muac/atn_capture_convert.sh
+StopSignal=SIGTERM
+TimeoutStopSec=10s
+
+[Install]
+WantedBy=multi-user.target
