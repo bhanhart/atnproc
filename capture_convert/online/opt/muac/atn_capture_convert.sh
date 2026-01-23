@@ -1,20 +1,21 @@
 #!/usr/bin/env bash
 
+# Runs a single tcpdump | awk pipeline, rotates at UTC midnight, handles signals gracefully.
+
 set -o nounset
 set -o pipefail
 
-# atn_capture_convert.sh
-# Runs a single tcpdump | awk pipeline, rotates at UTC midnight, handles signals gracefully.
+# shellcheck disable=SC2155
+readonly SCRIPT_NAME="$(basename "$0")"
 
-LOG_PREFIX="[atn_capture_convert]"
 function info
 {
-	echo "${LOG_PREFIX} INFO: $*" >&2
+	echo "${SCRIPT_NAME} INFO: $*"
 }
 
 function error
 {
-	echo "${LOG_PREFIX} ERROR: $*" >&2
+	echo "${SCRIPT_NAME} ERROR: $*" >&2
 }
 
 function require_cmd
@@ -29,11 +30,37 @@ function require_cmd
 require_cmd tcpdump
 require_cmd awk
 
-if [ -z "${NETWORK_INTERFACE:-}" ] || [ -z "${RTCD_SNIFFED_ADDRESS:-}" ] || [ -z "${AWK_CONVERSION_SCRIPT:-}" ] || [ -z "${ARCHIVE_DIR:-}" ]
-then
-	error "NETWORK_INTERFACE, RTCD_SNIFFED_ADDRESS, AWK_CONVERSION_SCRIPT and ARCHIVE_DIR must be set in environment"
-	exit 4
-fi
+# check_required_envs: verify all variables passed as arguments are set
+function check_required_envs
+{
+	local required=("$@")
+	local missing=()
+	local env_var
+	for env_var in "${required[@]}"
+	do
+		if [ -z "${!env_var:-}" ]
+		then
+			missing+=("$env_var")
+		fi
+	done
+	if (( ${#missing[@]} != 0 ))
+	then
+		error "missing required environment variables: ${missing[*]}"
+		return 1
+	fi
+	return 0
+}
+
+# required environment variables for operation
+REQUIRED_ENVS=(
+	NETWORK_INTERFACE
+	RTCD_SNIFFED_ADDRESS
+	AWK_CONVERSION_SCRIPT
+	ARCHIVE_DIR
+)
+
+# validate required envs
+check_required_envs "${REQUIRED_ENVS[@]}" || exit 4
 
 if ! mkdir -p "${ARCHIVE_DIR}"
 then
@@ -41,7 +68,7 @@ then
 	exit 5
 fi
 
-function make_filename
+function make_output_filename
 {
 	local host
 	host=$(hostname -s)
@@ -51,17 +78,33 @@ function make_filename
 	printf "%s_%s_%s.log" "${host}" "${NETWORK_INTERFACE}" "${timestamp}"
 }
 
-TCPDUMP_CMD=(tcpdump -i "${NETWORK_INTERFACE}" -n -e -x -tttt -l --immediate-mode "ip host ${RTCD_SNIFFED_ADDRESS} and proto 80")
-AWK_CMD=(awk -v RTCD_SNIFFED_ADDRESS="${RTCD_SNIFFED_ADDRESS}" -f "${AWK_CONVERSION_SCRIPT}")
+TCPDUMP_CMD=( \
+tcpdump \
+-i "${NETWORK_INTERFACE}" \
+-n \
+-e \
+-x \
+-tttt \
+-l \
+--immediate-mode \
+"ip host ${RTCD_SNIFFED_ADDRESS} and proto 80" \
+)
+
+AWK_CMD=( \
+awk \
+-v RTCD_SNIFFED_ADDRESS="${RTCD_SNIFFED_ADDRESS}" \
+-f "${AWK_CONVERSION_SCRIPT}" \
+)
 
 CURRENT_PG=0
+WATCHER_PID=0
 
-function start_pipeline
+function start_capture_pipeline
 {
 	local outfile
 	local tcp_cmd_str
 	local awk_cmd_str
-	outfile="${ARCHIVE_DIR}/$(make_filename)"
+	outfile="${ARCHIVE_DIR}/$(make_output_filename)"
 	info "starting pipeline: tcpdump -> awk -> ${outfile}"
 
 	# Build safely-quoted command strings
@@ -77,26 +120,16 @@ function start_pipeline
 	then
 		error "failed to start pipeline pgid=${CURRENT_PG}"
 		# attempt cleanup
-		stop_pipeline || true
+		stop_capture_pipeline || true
 		exit 6
 	fi
 	info "pipeline started pgid=${CURRENT_PG}"
-	# write a small health file so monitoring can detect the active pipeline
-	if [ -n "${ARCHIVE_DIR}" ]
-	then
-		local hf
-		local tmp
-		hf="${ARCHIVE_DIR}/.current_pipeline"
-		# use mktemp for a secure temporary file
-		tmp=$(mktemp "${hf}.tmp.XXXXXX")
-		printf 'pgid=%s started_at=%s outfile=%s\n' "${CURRENT_PG}" "$(date --utc +%Y-%m-%dT%H:%M:%SZ)" "${outfile}" >"${tmp}"
-		mv -f "${tmp}" "${hf}" || true
-	fi
+		write_health_file "${CURRENT_PG}" "${outfile}"
 }
 
-function stop_pipeline
+function stop_capture_pipeline
 {
-	if [ ${CURRENT_PG:-0} -eq 0 ]
+	if (( ${CURRENT_PG:-0} == 0 ))
 	then
 		return
 	fi
@@ -109,7 +142,7 @@ function stop_pipeline
 		sleep 0.2
 		waited=$((waited + 1))
 		# stop waiting after ~9 seconds (45 * 0.2s) to fit systemd TimeoutStopSec
-		if [ $waited -gt 45 ]
+		if (( waited > 45 ))
 		then
 			info "pipeline did not exit within grace period, sending KILL to pgid ${CURRENT_PG}"
 			kill -KILL -"${CURRENT_PG}" 2>/dev/null || true
@@ -118,15 +151,35 @@ function stop_pipeline
 	done
 	CURRENT_PG=0
 	# remove health file
-	if [ -n "${ARCHIVE_DIR}" ]
-	then
-		rm -f "${ARCHIVE_DIR}/.current_pipeline" 2>/dev/null || true
-	fi
+		remove_health_file
 	info "pipeline stopped"
 }
 
+function write_health_file
+{
+	local pg=$1
+	local outfile=$2
+	if [ -n "${ARCHIVE_DIR:-}" ]
+	then
+		local hf
+		local tmp
+		hf="${ARCHIVE_DIR}/.current_pipeline"
+		tmp=$(mktemp "${hf}.tmp.XXXXXX")
+		printf 'pgid=%s started_at=%s outfile=%s\n' "${pg}" "$(date --utc +%Y-%m-%dT%H:%M:%SZ)" "${outfile}" >"${tmp}"
+		mv -f "${tmp}" "${hf}" || true
+	fi
+}
+
+function remove_health_file
+{
+	if [ -n "${ARCHIVE_DIR:-}" ]
+	then
+		rm -f "${ARCHIVE_DIR}/.current_pipeline" 2>/dev/null || true
+	fi
+}
+
 # watcher: wait for the pipeline process group; if it exits unexpectedly (not via our stop), exit non-zero
-function watch_pipeline
+function watch_capture_pipeline
 {
 	local pg=$1
 	# wait for the process to die; when it does, check whether we expected it
@@ -135,19 +188,43 @@ function watch_pipeline
 		sleep 1
 	done
 	# if CURRENT_PG is non-zero and equals pg, then pipeline stopped unexpectedly
-	if [ "${CURRENT_PG:-0}" -eq "${pg}" ]
+	if (( ${CURRENT_PG:-0} == pg ))
 	then
 		error "pipeline process group ${pg} exited unexpectedly; shutting down"
 		# ensure we clean up
-		stop_pipeline || true
+		stop_capture_pipeline || true
 		exit 6
 	fi
 }
 
+# manage a background watcher that monitors the current pipeline process group
+function start_pipeline_watcher
+{
+	if (( ${CURRENT_PG:-0} != 0 ))
+	then
+		watch_capture_pipeline "${CURRENT_PG}" &
+		WATCHER_PID=$!
+	else
+		WATCHER_PID=0
+	fi
+}
+
+function stop_pipeline_watcher
+{
+	if (( ${WATCHER_PID:-0} != 0 ))
+	then
+		kill "${WATCHER_PID}" 2>/dev/null || true
+		wait "${WATCHER_PID}" 2>/dev/null || true
+	fi
+	WATCHER_PID=0
+}
+
 function sig_handler
 {
-	info "signal received, shutting down"
-	stop_pipeline
+	info "signal received, shutting down..."
+	# stop watcher first to avoid it exiting the script with an error
+	stop_pipeline_watcher
+	stop_capture_pipeline
 	info "exiting cleanly"
 	exit 0
 }
@@ -163,44 +240,38 @@ function seconds_until_utc_midnight
 	echo $((next_mid - now))
 }
 
-function main_loop
+# wait_until_utc_midnight: sleeps in short increments until next UTC midnight
+function wait_until_utc_midnight
+{
+	local secs
+	local slept
+	local tosleep
+	secs=$(seconds_until_utc_midnight)
+	info "sleeping ${secs}s until next UTC midnight rotation"
+	slept=0
+	while (( slept < secs ))
+	do
+		tosleep=$((secs - slept))
+		if (( tosleep > 10 ))
+		then
+			tosleep=10
+		fi
+		sleep "$tosleep" || true
+		slept=$((slept + tosleep))
+	done
+	info "UTC midnight reached, rotating pipeline"
+}
+
+function main
 {
 	while true
 	do
-		start_pipeline
-		# start watcher in background to detect unexpected pipeline termination
-		if [ ${CURRENT_PG:-0} -ne 0 ]
-		then
-			watch_pipeline "${CURRENT_PG}" &
-			watcher_pid=$!
-		else
-			watcher_pid=0
-		fi
-		local secs
-		local slept
-		local tosleep
-		secs=$(seconds_until_utc_midnight)
-		info "sleeping ${secs}s until next UTC midnight rotation"
-		slept=0
-		while [ $slept -lt "$secs" ]
-		do
-			tosleep=$((secs - slept))
-			if [ $tosleep -gt 10 ]
-			then
-				tosleep=10
-			fi
-			sleep "$tosleep" || true
-			slept=$((slept + tosleep))
-		done
-		info "UTC midnight reached, rotating pipeline"
-		stop_pipeline
-		# stop watcher if running
-		if [ "${watcher_pid:-0}" -ne 0 ]; then
-			kill "${watcher_pid}" 2>/dev/null || true
-			wait "${watcher_pid}" 2>/dev/null || true
-		fi
-		# continue and start a new pipeline with new filename
+		start_capture_pipeline
+		start_pipeline_watcher
+		wait_until_utc_midnight
+		stop_capture_pipeline
+		stop_pipeline_watcher
 	done
 }
 
-main_loop
+main

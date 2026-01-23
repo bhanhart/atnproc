@@ -4,6 +4,11 @@ Scope
 
 - Applies to all shell scripts in this repository (Bash / POSIX sh compatible).
 
+General Formatting Rules
+
+- Only use spaces for indentation
+- Use indentation level of 4 spaces
+
 Function declarations
 
 - Use the `function name` style for function declarations, not `name()`.
@@ -35,6 +40,7 @@ Control-flow formatting
 Variables and portability
 
 - Preserve existing variable names when editing.
+- Do not use single letter variable names. Use descriptive names for variables.
 - Scripts are not required to be POSIX-compatible. Use `bash` features where preferred.
 
 Scoping rules
