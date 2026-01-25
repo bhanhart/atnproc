@@ -48,7 +48,7 @@ This document defines the functional and non-functional requirements for a captu
 
     Cleanup tool and behavior
 
-    - The cleanup job invoked at service pre-start shall require `lsof` to detect open files. The cleanup shall remove ASCII log files older than `RETENTION_DAYS` but must skip files reported open by `lsof`. If `lsof` returns an error for a file, the cleanup must log the error and skip deletion for that file. The cleanup script must not prevent service start if it returns non-zero.
+    - The cleanup job invoked at service pre-start shall remove ASCII log files older than `RETENTION_DAYS`. The cleanup script must not prevent service start if it returns non-zero.
 
 6. Start/Stop and Signal Handling
 
@@ -120,7 +120,7 @@ Notes:
 ## Deployment
 
 - Provide and install a `systemd` service unit for the capture script; Pacemaker will manage the service unit's lifecycle (start/stop/failover).
-- Use an `EnvironmentFile` (for example `/etc/sysconfig/atn_capture_convert`) to set `NETWORK_INTERFACE`, `ARCHIVE_DIR`, `RETENTION_DAYS`, and `RTCD_SNIFFED_ADDRESS`.
+- Use an `EnvironmentFile` (for example `/etc/sysconfig/atn_capture_convert`) to set `NETWORK_INTERFACE`, `RTCD_SNIFFED_ADDRESS`, `AWK_CONVERSION_SCRIPT`, `ARCHIVE_DIR` and `RETENTION_DAYS`.
 - The cleanup script may be run as a pre-start action but must not block service start if it returns non-zero.
 - Ensure the process runs as `root` per the security requirement and that file ownership and permissions of `ARCHIVE_DIR` are correct after any Pacemaker failover.
 - Configure the systemd service unit as a Pacemaker-managed resource to always run on the MAIN node.

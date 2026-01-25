@@ -1,18 +1,19 @@
 [Unit]
 Description=ATN network capture and conversion to Airtel Router format
+Wants=network-online.target
 After=network-online.target
 
 [Service]
-Type=simple
-User=root
-Group=root
+# File with environment variables used in the Bash scripts
 EnvironmentFile=/etc/sysconfig/atn_capture_convert.env
 
 # Run cleanup before starting; tolerate failures so service start is not blocked
 ExecStartPre=-/opt/muac/atn_capture_convert_cleanup.sh
 ExecStart=/opt/muac/atn_capture_convert.sh
-StopSignal=SIGTERM
+Type=simple
 TimeoutStopSec=10s
+# Lifecycle managed by Pacemaker
+Restart=no
 
 [Install]
 WantedBy=multi-user.target

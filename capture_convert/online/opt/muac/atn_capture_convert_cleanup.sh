@@ -1,54 +1,48 @@
 #!/usr/bin/env bash
-set -euo pipefail
 
-LOG_PREFIX="[atn_capture_cleanup]"
-info(){ echo "${LOG_PREFIX} INFO: $*" >&2; }
-err(){ echo "${LOG_PREFIX} ERROR: $*" >&2; }
+set -o pipefail
+set -o nounset
 
-RETENTION_DAYS=${RETENTION_DAYS:-7}
+: "${ARCHIVE_DIR:=/archives/captures/routerlog}"
+: "${RETENTION_DAYS:=7}"
 
-require_cmd() { command -v "$1" >/dev/null 2>&1 || { err "required command '$1' not found"; exit 2; }; }
-require_cmd lsof
-require_cmd find
+function _format_message
+{
+    local -r category="$1" ; shift
+    local -r message="$*"
+    printf "%s - %b" "${category}" "${message}"
+}
 
-if [ -z "${ARCHIVE_DIR:-}" ]; then
-    err "ARCHIVE_DIR must be set in environment"
-    exit 3
-fi
+function _to_stdout { printf "%b\n" "$*" ; }
+function _to_stderr { _to_stdout "$*" 1>&2 ; }
+function info { _to_stdout "$( _format_message "INFO " "$*" )" ; }
+function fatal { _to_stderr "$( _format_message "FATAL" "$*" )" ; exit 1 ; }
 
-if [ ! -d "${ARCHIVE_DIR}" ]; then
-    info "ARCHIVE_DIR ${ARCHIVE_DIR} does not exist, nothing to clean"
-    exit 0
-fi
-
-now=$(date +%s)
-cutoff=$((now - RETENTION_DAYS*24*60*60))
-
-info "cleaning files in ${ARCHIVE_DIR} older than ${RETENTION_DAYS} days"
-
-while IFS= read -r -d '' file; do
-    # check if open using lsof; handle lsof errors explicitly
-    if lsof -- "${file}" >/dev/null 2>&1; then
-        info "skipping open file ${file}"
-        continue
-    else
-        ls_exit=$?
-        if [ ${ls_exit} -ne 1 ]; then
-            err "lsof returned error (code ${ls_exit}) for ${file}; skipping deletion"
-            continue
-        fi
+function main
+{
+    if [[ -z "${ARCHIVE_DIR}" ]]
+    then
+        fatal "Variable 'ARCHIVE_DIR' not set"
     fi
-    info "removing ${file}"
-    if ! rm -f -- "${file}"; then
-        err "failed to remove ${file}"
+    if [[ ! -d "${ARCHIVE_DIR}" ]]
+    then
+        info "Directory '${ARCHIVE_DIR}' does not exist"
+        return 0
     fi
-done < <(find "${ARCHIVE_DIR}" -maxdepth 1 -type f -name "*.log" -print0 | while IFS= read -r -d '' f; do
-    # check mtime
-    mtime=$(stat -c %Y "${f}")
-    if [ "${mtime}" -lt ${cutoff} ]; then printf '%s\0' "${f}"; fi
-done)
 
-info "cleanup finished"
+    info "Searching '${ARCHIVE_DIR}' for files older than ${RETENTION_DAYS} days..."
 
-# exit with non-zero if any rm failed would have been logged; allow failures to propagate
-exit 0
+    # Files are separated by a NUL character due to the "-print0" option of the
+    # find command. Therefore, also set the separator to NUL using the -d ''
+    # option of the read command
+    while IFS= read -r -d '' file
+    do
+        info "Deleting '${file}'"
+        rm -f -- "${file}"
+
+    done < <( find "${ARCHIVE_DIR}" -type f -mtime +"${RETENTION_DAYS}" -print0 )
+
+    info "Finished searching '${ARCHIVE_DIR}' for files older than ${RETENTION_DAYS} days"
+}
+
+main
