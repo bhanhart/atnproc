@@ -7,12 +7,11 @@ After=network-online.target
 # File with environment variables used in the Bash scripts
 EnvironmentFile=/etc/sysconfig/atn_capture.env
 
-# Start the main service even when the cleanup script fails
+# Run cleanup before starting; tolerate failures so service start is not blocked
 ExecStartPre=-/opt/muac/atn_capture_cleanup.sh
 ExecStart=/opt/muac/atn_capture.sh
 Type=simple
-KillMode=control-group
-TimeoutStopSec=5
+TimeoutStopSec=10s
 # Lifecycle managed by Pacemaker
 Restart=no
 

@@ -37,17 +37,23 @@ Control-flow formatting
       do_something_else
   fi
 
-Variables and portability
+Variables
 
 - Preserve existing variable names when editing.
 - Do not use single letter variable names. Use descriptive names for variables.
-- Scripts are not required to be POSIX-compatible. Use `bash` features where preferred.
+- Use all uppercase names for global variables
+- Never declare multiple variables in a single statement.
+- Declare variables as close as possible to their first use.
+- Declare readonly local variables using 'local -r'
+- For each argument passed in to a functino, declare a local variables using the 'local -r name=$1' syntax
+
+Portability
+
+- Always use `bash` syntax and features. Scripts are not required to be POSIX-compatible.
 
 Scoping rules
 
 - Use the local keyword where appropriate to minimize the scope of variables.
-- Never declare multiple variables in a single statement.
-- Declare variables as close as possible to their first use.
 
 Runtime Environment Assumptions
 

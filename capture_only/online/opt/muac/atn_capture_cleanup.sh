@@ -3,7 +3,7 @@
 set -o pipefail
 set -o nounset
 
-: "${ARCHIVE_DIR:=/archives/captures}"
+: "${ARCHIVE_DIR:=/archives/captures/pcap}"
 : "${RETENTION_DAYS:=7}"
 
 function _format_message
@@ -13,44 +13,17 @@ function _format_message
     printf "%s - %b" "${category}" "${message}"
 }
 
-function _to_stdout
-{
-    printf "%b\n" "$*"
-}
-
-function _to_stderr
-{
-    _to_stdout "$*" 1>&2
-}
-
-function info
-{
-    _to_stdout "$( _format_message "INFO " "$*" )"
-}
-
-function error
-{
-    _to_stderr "$( _format_message "ERROR" "$*" )"
-}
-
-function fatal
-{
-    _to_stderr "$( _format_message "FATAL" "$*" )"
-    exit 1
-}
+function _to_stdout { printf "%b\n" "$*" ; }
+function _to_stderr { _to_stdout "$*" 1>&2 ; }
+function info { _to_stdout "$( _format_message "INFO " "$*" )" ; }
+function fatal { _to_stderr "$( _format_message "FATAL" "$*" )" ; exit 1 ; }
 
 function main
 {
-    if ! command -v lsof >/dev/null 2>&1
-    then
-        fatal "No 'lsof' command found"
-    fi
-
     if [[ -z "${ARCHIVE_DIR}" ]]
     then
         fatal "Variable 'ARCHIVE_DIR' not set"
     fi
-
     if [[ ! -d "${ARCHIVE_DIR}" ]]
     then
         info "Directory '${ARCHIVE_DIR}' does not exist"
@@ -64,13 +37,6 @@ function main
     # option of the read command
     while IFS= read -r -d '' file
     do
-        # Just to be on the safe side, check whether the file is open
-        if lsof -- "$file" >/dev/null 2>&1
-        then
-            info "Skipping file '${file}' because it is currently open"
-            continue
-        fi
-
         info "Deleting '${file}'"
         rm -f -- "${file}"
 
