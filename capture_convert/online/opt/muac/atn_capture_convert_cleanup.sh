@@ -3,8 +3,11 @@
 set -o pipefail
 set -o nounset
 
-: "${ARCHIVE_DIR:=/archives/captures/routerlog}"
+: "${CAPTURE_DIR:=/archives/captures}"
 : "${RETENTION_DAYS:=7}"
+
+declare -r OUTPUT_DIR="${CAPTURE_DIR}/routerlog"
+declare -r LOG_DIR="${CAPTURE_DIR}/log"
 
 function _format_message
 {
@@ -18,19 +21,18 @@ function _to_stderr { _to_stdout "$*" 1>&2 ; }
 function info { _to_stdout "$( _format_message "INFO " "$*" )" ; }
 function fatal { _to_stderr "$( _format_message "FATAL" "$*" )" ; exit 1 ; }
 
-function main
+function cleanup_old_files
 {
-    if [[ -z "${ARCHIVE_DIR}" ]]
+    local -r directory="$1"
+    local -r retention_days="$2"
+
+    if [[ ! -d "${directory}" ]]
     then
-        fatal "Variable 'ARCHIVE_DIR' not set"
-    fi
-    if [[ ! -d "${ARCHIVE_DIR}" ]]
-    then
-        info "Directory '${ARCHIVE_DIR}' does not exist"
+        info "Directory '${directory}' does not exist (yet), nothing to do"
         return 0
     fi
 
-    info "Searching '${ARCHIVE_DIR}' for files older than ${RETENTION_DAYS} days..."
+    info "Searching '${directory}' for files older than ${retention_days} days..."
 
     # Files are separated by a NUL character due to the "-print0" option of the
     # find command. Therefore, also set the separator to NUL using the -d ''
@@ -40,9 +42,17 @@ function main
         info "Deleting '${file}'"
         rm -f -- "${file}"
 
-    done < <( find "${ARCHIVE_DIR}" -type f -mtime +"${RETENTION_DAYS}" -print0 )
+    done < <( find "${directory}" -type f -mtime +"${retention_days}" -print0 )
+}
 
-    info "Finished searching '${ARCHIVE_DIR}' for files older than ${RETENTION_DAYS} days"
+function main
+{
+    info "Starting cleanup of files older than ${RETENTION_DAYS} days"
+
+    cleanup_old_files "${OUTPUT_DIR}" "${RETENTION_DAYS}"
+    cleanup_old_files "${LOG_DIR}" "${RETENTION_DAYS}"
+
+    info "Finished cleanup of files older than ${RETENTION_DAYS} days"
 }
 
 main
