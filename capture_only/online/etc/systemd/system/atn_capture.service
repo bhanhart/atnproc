@@ -11,7 +11,7 @@ EnvironmentFile=/etc/sysconfig/atn_capture.env
 ExecStartPre=-/opt/muac/atn_capture_cleanup.sh
 ExecStart=/opt/muac/atn_capture.sh
 Type=simple
-TimeoutStopSec=10s
+TimeoutStopSec=5s
 # Lifecycle managed by Pacemaker
 Restart=no
 

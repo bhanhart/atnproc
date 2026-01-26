@@ -3,8 +3,10 @@
 set -o pipefail
 set -o nounset
 
-: "${ARCHIVE_DIR:=/archives/captures/pcap}"
+: "${CAPTURE_DIR:=/archives/captures}"
 : "${RETENTION_DAYS:=7}"
+
+declare -r OUTPUT_DIR="${CAPTURE_DIR}/pcap"
 
 function _format_message
 {
@@ -20,18 +22,13 @@ function fatal { _to_stderr "$( _format_message "FATAL" "$*" )" ; exit 1 ; }
 
 function main
 {
-    if [[ -z "${ARCHIVE_DIR}" ]]
+    if [[ ! -d "${OUTPUT_DIR}" ]]
     then
-        fatal "Variable 'ARCHIVE_DIR' not set"
-    fi
-    if [[ ! -d "${ARCHIVE_DIR}" ]]
-    then
-        info "Directory '${ARCHIVE_DIR}' does not exist"
+        info "Directory '${OUTPUT_DIR}' does not exist (yet), nothing to do"
         return 0
     fi
 
-    info "Searching '${ARCHIVE_DIR}' for files older than ${RETENTION_DAYS} days..."
-
+    info "Searching '${OUTPUT_DIR}' for files older than ${RETENTION_DAYS} days..."
     # Files are separated by a NUL character due to the "-print0" option of the
     # find command. Therefore, also set the separator to NUL using the -d ''
     # option of the read command
@@ -40,9 +37,9 @@ function main
         info "Deleting '${file}'"
         rm -f -- "${file}"
 
-    done < <( find "${ARCHIVE_DIR}" -type f -mtime +"${RETENTION_DAYS}" -print0 )
+    done < <( find "${OUTPUT_DIR}" -type f -mtime +"${RETENTION_DAYS}" -print0 )
 
-    info "Finished searching '${ARCHIVE_DIR}' for files older than ${RETENTION_DAYS} days"
+    info "Finished searching '${OUTPUT_DIR}' for files older than ${RETENTION_DAYS} days"
 }
 
 main

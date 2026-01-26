@@ -8,6 +8,8 @@ set -o nounset
 : "${CAPTURE_FILE_DURATION_SECS:=3600}"
 : "${CAPTURE_NUM_CAPTURE_FILES:=72}"
 
+declare -r OUTPUT_DIR="${ARCHIVE_DIR}"/pcap
+
 declare STOP_REQUESTED=0
 
 function signal_handler
@@ -24,31 +26,11 @@ function _format_message
     printf "%s - %b" "${category}" "${message}"
 }
 
-function _to_stdout
-{
-    printf "%b\n" "$*"
-}
-
-function _to_stderr
-{
-    _to_stdout "$*" 1>&2
-}
-
-function info
-{
-    _to_stdout "$( _format_message "INFO " "$*" )"
-}
-
-function error
-{
-    _to_stderr "$( _format_message "ERROR" "$*" )"
-}
-
-function fatal
-{
-    _to_stderr "$( _format_message "FATAL" "$*" )"
-    exit 1
-}
+function _to_stdout { printf "%b\n" "$*" ; }
+function _to_stderr { _to_stdout "$*" 1>&2 ; }
+function info { _to_stdout "$( _format_message "INFO " "$*" )" ; }
+function error { _to_stderr "$( _format_message "ERROR" "$*" )" ; }
+function fatal { _to_stderr "$( _format_message "FATAL" "$*" )" ; exit 1 ; }
 
 function is_process_running
 {
@@ -81,10 +63,10 @@ function main
         fatal "No 'dumpcap' command found"
     fi
 
-    mkdir -p "${ARCHIVE_DIR}"
+    mkdir -p "${OUTPUT_DIR}"
 
     local -r hostname="$(hostname -s)"
-    local -r capture_file="${ARCHIVE_DIR}"/"${hostname%%-*}"_"${NETWORK_INTERFACE}".pcap
+    local -r capture_file="${OUTPUT_DIR}"/"${hostname%%-*}"_"${NETWORK_INTERFACE}".pcap
 
     info "Start capturing on interface ${NETWORK_INTERFACE} to file ${capture_file}"
 

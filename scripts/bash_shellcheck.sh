@@ -101,6 +101,9 @@ echo "Running ShellCheck on ${#ALL_FILES[@]} script(s)..."
 sc_failures=0
 SC_ISSUES=()
 for script in "${ALL_FILES[@]}"; do
+  if [ "${VERBOSE:-0}" = "1" ]; then
+    echo "Checking ${script} ..."
+  fi
   sc_tmp=$(mktemp)
   if ! shellcheck "$script" >"$sc_tmp" 2>&1; then
     sc_failures=$((sc_failures+1))
