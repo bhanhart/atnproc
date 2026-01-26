@@ -4,11 +4,11 @@ set -o pipefail
 set -o nounset
 
 : "${NETWORK_INTERFACE:=net3}"
-: "${ARCHIVE_DIR:=/archives/captures}"
+: "${CAPTURE_DIR:=/archives/captures}"
 : "${CAPTURE_FILE_DURATION_SECS:=3600}"
 : "${CAPTURE_NUM_CAPTURE_FILES:=72}"
 
-declare -r OUTPUT_DIR="${ARCHIVE_DIR}"/pcap
+declare -r OUTPUT_DIR="${CAPTURE_DIR}"/pcap
 
 declare STOP_REQUESTED=0
 
