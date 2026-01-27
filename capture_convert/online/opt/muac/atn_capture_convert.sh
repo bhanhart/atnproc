@@ -89,35 +89,22 @@ function assert_prerequisites
 
 function get_today_timestamp
 {
-    date --utc +%Y-%m-%dT%H:%M:%SZ # ISO 8601 UTC timestamp
+    date --utc +%Y%m%d_%H%M%S
 }
 
-function day_from_timestamp
+function date_from_timestamp
 {
     local -r ts="$1"
-    local date_part="${ts%%T*}" # Extract date part
-    date_part="${date_part//-/}" # Remove hyphens
-    printf "%s" "${date_part}" # YYYYMMDD
-}
-
-function time_from_timestamp
-{
-    local -r ts="$1"
-    local time_part="${ts#*T}" # Extract time part
-    time_part="${time_part%Z}" # Remove trailing Z
-    time_part="${time_part//:/}" # Remove colons
-    printf "%s" "${time_part}" # HHMMSS
+    printf "%s" "${ts%%_*}"
 }
 
 function make_output_filename
 {
     local -r timestamp="$1"
-    local -r date_part=$(day_from_timestamp "${timestamp}")
-    local -r time_part=$(time_from_timestamp "${timestamp}")
     local host
     host=$(hostname -s)
     host=${host%%-*}
-    printf "%s_%s_%s_%s.log" "${host}" "${NETWORK_INTERFACE}" "${date_part}" "${time_part}"
+    printf "%s_%s_%s.log" "${host}" "${NETWORK_INTERFACE}" "${timestamp}"
 }
 
 function write_pipeline_info_file
@@ -231,7 +218,7 @@ function monitor_capture_pipeline
     info "Starting pipeline monitoring for ${processing_timestamp}"
 
     local processing_day
-    processing_day=$(day_from_timestamp "${processing_timestamp}" )
+    processing_day=$(date_from_timestamp "${processing_timestamp}" )
 
     while true
     do
@@ -250,7 +237,7 @@ function monitor_capture_pipeline
 
         # Check for day change
         local current_day
-        current_day=$(day_from_timestamp "$(get_today_timestamp)")
+        current_day=$(date_from_timestamp "$(get_today_timestamp)")
         if [[ "${current_day}" != "${processing_day}" ]]
         then
             info "Day change detected (was ${processing_day}, now ${current_day}); restarting pipeline"
