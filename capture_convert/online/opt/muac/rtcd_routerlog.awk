@@ -49,6 +49,8 @@ BEGIN {
     processedLength = 0;  # Records the amount of data processed so
                           # far so that when it is equal to dataLength
                           # all the data has been processed
+    # Split RTCD_SNIFFED_ADDRESS (comma separated) into IPS array
+    n_ips = split(RTCD_SNIFFED_ADDRESS, IPS, /[[:space:]]*,[[:space:]]*/);
 }
 
 function print_logline () {
@@ -81,42 +83,56 @@ NF >= 15 && /^[0-9]{4}-[0-9]{2}-[0-9]{2}/ {  # this is a tcpdump header line
     #   2019-08-22 14:08:13.136048 00:00:00:00:00:00 > 00:00:00:00:00:00, ethertype IPv4 (0x0800), length 124: 127.0.0.4 > 127.0.0.3:  iso-ip 90
     # After:
     #   2019-08-22 14:08:13.136 RCVD 90
-    if (match($0, RTCD_SNIFFED_ADDRESS " >"))
+    sent = -1
+    ip_address = ""
+    for (i = 1; i <= n_ips; i++)
     {
-      # Extract IP address Data was sent to
-      pos = match($0, RTCD_SNIFFED_ADDRESS " >");
-      ip_address = substr($0, pos);
-      sub(/.* > /,"", ip_address);
-      sub(/:.*/,"", ip_address);
+        pos = index($0, IPS[i] " >")
+        if (pos > 0)
+        {
+            # Found "src >" - extract destination IP (next field after >)
+            # Skip "src > " part
+            ip_address = substr($0, pos + length(IPS[i]) + 3)
+            # Remove everything starting from nearest colon or space
+            sub(/[: ].*/, "", ip_address)
+            sent = 1
+            break
+        }
+        pos = index($0, "> " IPS[i])
+        if (pos > 0)
+        {
+            # Found "> dst" - extract source IP (last field before >)
+            # Get prefix before " > dst"
+            prefix = substr($0, 1, pos - 1)
+            # Extract last whitespace-separated field
+            n = split(prefix, a, " ")
+            ip_address = a[n]
+            sent = 0
+            break
+        }
+    }
 
-      if (match($0, "iso-ip"))
-      {
-        gsub(/[0-9]{3} [0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}.+iso-ip/, " SENT");
-      }
-      else
-      {
-        gsub(/[0-9]{3} [0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}.+ip-proto-80/, " SENT");
-      }
+    if (sent == 1)
+    {
+        if (match($0, "iso-ip"))
+        {
+            gsub(/[0-9]{3} [0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}.+iso-ip/, " SENT")
+        }
+        else
+        {
+            gsub(/[0-9]{3} [0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}.+ip-proto-80/, " SENT")
+        }
     }
     else
     {
-      # Extract IP address Data was received from
-      pos = match($0, "> " RTCD_SNIFFED_ADDRESS);
-      ip_address = substr($0, 0, pos);
-      sub(/.* length.*: /,"",ip_address);
-      sub(/ >/,"",ip_address);
-      # tcpdump may contain extra info between length and IP address,
-      # eg "vlan ..."
-      sub(/.* /,"",ip_address);      
-
-      if (match($0, "iso-ip"))
-      {
-        gsub(/[0-9]{3} [0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}.+iso-ip/, " RCVD");
-      }
-      else
-      {
-        gsub(/[0-9]{3} [0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}.+ip-proto-80/, " RCVD");
-      }
+        if (match($0, "iso-ip"))
+        {
+            gsub(/[0-9]{3} [0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}.+iso-ip/, " RCVD")
+        }
+        else
+        {
+            gsub(/[0-9]{3} [0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}.+ip-proto-80/, " RCVD")
+        }
     }
     # Store the data length, adding the 20 bytes header
     dataLength = $NF + 20 ;
@@ -141,13 +157,13 @@ NF > 1 && /^[[:space:]]+0x/ { # This is a tcpdump packet line
     logline = logline $0
 
     # Print buffer if we've processed the tcpdump entry fully
-    if (processedLength == dataLength)
-    {
-      print_logline();
-      # Reset variables
-      logline         = "";
-      dataLength      = 0;
-      processedLength = 0;
-    }
+        if (processedLength == dataLength)
+        {
+                print_logline();
+                # Reset variables
+                logline         = "";
+                dataLength      = 0;
+                processedLength = 0;
+        }
     next;
 }

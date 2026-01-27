@@ -10,8 +10,8 @@ declare -r LOG_DIR="${CAPTURE_DIR}/log"
 
 declare -r PIPELINE_INFO_FILE="${LOG_DIR}/current_pipeline.info"
 
-declare CURRENT_PGID=0
-declare STOP_REQUESTED=0
+declare -i CURRENT_PGID=0
+declare -i STOP_REQUESTED=0
 
 function signal_handler
 {
@@ -72,6 +72,16 @@ function assert_prerequisites
     local -r required_variables=( NETWORK_INTERFACE RTCD_SNIFFED_ADDRESS CAPTURE_DIR AWK_CONVERSION_SCRIPT )
     assert_required_variables "${required_variables[@]}"
 
+    if [[ -z "${RTCD_SNIFFED_ADDRESS//[[:space:],]/}" ]]
+    then
+        fatal "RTCD_SNIFFED_ADDRESS is empty or invalid"
+    fi
+
+    if [[ ${RTCD_SNIFFED_ADDRESS} =~ (^|,)[[:space:]]*(,|$) ]]
+    then
+        fatal "RTCD_SNIFFED_ADDRESS contains empty entries"
+    fi
+
     if [[ ! -f "${AWK_CONVERSION_SCRIPT}" ]]
     then
         fatal "AWK conversion script not found: ${AWK_CONVERSION_SCRIPT}"
@@ -124,7 +134,9 @@ function start_capture_pipeline
 {
     local -r processing_timestamp="$1"
 
-    info "Starting pipeline at ${processing_timestamp}"
+    local rtcd_filter
+    rtcd_filter=$(printf '%s' "${RTCD_SNIFFED_ADDRESS}" | sed -E 's/,/ or ip host /g; s/^/ip host /')
+    rtcd_filter+=" and proto 80"
 
     local -ra tcpdump_cmd=(
         tcpdump
@@ -135,30 +147,34 @@ function start_capture_pipeline
         -tttt
         -l
         --immediate-mode
-        "ip host ${RTCD_SNIFFED_ADDRESS} and proto 80" )
+        "${rtcd_filter}" )
 
     local -ra awk_cmd=(
         awk
         -v RTCD_SNIFFED_ADDRESS="${RTCD_SNIFFED_ADDRESS}"
         -f "${AWK_CONVERSION_SCRIPT}" )
 
-    local tcp_cmd_safe
-    tcp_cmd_safe=$(printf '%q ' "${tcpdump_cmd[@]}")
-    local awk_cmd_safe
-    awk_cmd_safe=$(printf '%q ' "${awk_cmd[@]}")
+    local tcp_cmd_escaped
+    tcp_cmd_escaped=$(printf '%q ' "${tcpdump_cmd[@]}")
+    local awk_cmd_escaped
+    awk_cmd_escaped=$(printf '%q ' "${awk_cmd[@]}")
 
     local -r output_filename="$(make_output_filename "${processing_timestamp}")"
     local -r outfile="${OUTPUT_DIR}/${output_filename}"
     local -r logfile_base="${LOG_DIR}/${output_filename}"
 
-    info "Starting pipeline with output to '${outfile}' (error logs: '${logfile_base}.tcpdump.stderr', '${logfile_base}.awk.stderr')"
+    local -r tcpdump_stderr="${logfile_base}.tcpdump.stderr"
+    local -r awk_stderr="${logfile_base}.awk.stderr"
+
+    info "Starting capture pipeline: ${tcp_cmd_escaped} | ${awk_cmd_escaped}"
 
     # The `$!` contains the PID of the new process group
     # This process group PID is then used for signalling the entire pipeline.
-    setsid bash -c "exec ${tcp_cmd_safe} 2>\"${logfile_base}.tcpdump.stderr\" | exec ${awk_cmd_safe} >>\"${outfile}\" 2>\"${logfile_base}.awk.stderr\"" &
+    setsid bash -c "exec ${tcp_cmd_escaped} 2>\"${tcpdump_stderr}\" | exec ${awk_cmd_escaped} >>\"${outfile}\" 2>\"${awk_stderr}\"" &
     CURRENT_PGID=$!
 
-    info "Pipeline started with pgid=${CURRENT_PGID} outputting to '${outfile}'"
+    info "Capture pipeline started with pgid=${CURRENT_PGID} and output to '${outfile}'"
+    info "Error logs: '${tcpdump_stderr}' and '${awk_stderr}'"
 
     write_pipeline_info_file "${CURRENT_PGID}" "${outfile}"
 }
