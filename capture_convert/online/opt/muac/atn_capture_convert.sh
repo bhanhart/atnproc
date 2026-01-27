@@ -7,7 +7,8 @@ set -o pipefail
 
 declare -r OUTPUT_DIR="${CAPTURE_DIR}/routerlog"
 declare -r LOG_DIR="${CAPTURE_DIR}/log"
-declare -r HEALTH_FILE="${LOG_DIR}/current_pipeline.info"
+
+declare -r PIPELINE_INFO_FILE="${LOG_DIR}/current_pipeline.info"
 
 declare CURRENT_PGID=0
 declare STOP_REQUESTED=0
@@ -66,8 +67,7 @@ function assert_prerequisites
 {
     assert_command_available tcpdump
     assert_command_available awk
-    assert_command_available stdbuf
-
+    
     # Required environment variables to be provided via systemd EnvironmentFile
     local -r required_variables=( NETWORK_INTERFACE RTCD_SNIFFED_ADDRESS CAPTURE_DIR AWK_CONVERSION_SCRIPT )
     assert_required_variables "${required_variables[@]}"
@@ -112,12 +112,12 @@ function write_pipeline_info_file
     local -r pipeline_pgid="$1"
     local -r outfile="$2"
 
-    printf 'pgid=%s started_at=%s outfile=%s\n' "${pipeline_pgid}" "$(get_today_timestamp)" "${outfile}" >"${HEALTH_FILE}" || true
+    printf 'pgid=%s started_at=%s outfile=%s\n' "${pipeline_pgid}" "$(get_today_timestamp)" "${outfile}" >"${PIPELINE_INFO_FILE}" || true
 }
 
 function remove_pipeline_info_file
 {
-    rm -f "${HEALTH_FILE}" 2>/dev/null || true
+    rm -f "${PIPELINE_INFO_FILE}" 2>/dev/null || true
 }
 
 function start_capture_pipeline
@@ -138,7 +138,6 @@ function start_capture_pipeline
         "ip host ${RTCD_SNIFFED_ADDRESS} and proto 80" )
 
     local -ra awk_cmd=(
-        stdbuf -oL
         awk
         -v RTCD_SNIFFED_ADDRESS="${RTCD_SNIFFED_ADDRESS}"
         -f "${AWK_CONVERSION_SCRIPT}" )
